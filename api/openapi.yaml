@@ -1,0 +1,1214 @@
+openapi: 3.0.1
+info:
+  contact:
+    email: api-support@whisper.security
+    name: Whisper API Support
+    url: https://whisper.security/docs
+  description: |-
+    Whisper provides comprehensive intelligence and monitoring capabilities for domains, IPs, and web infrastructure. Access powerful APIs for WHOIS data, DNS analysis, screenshot capture, network intelligence, and more - all through a unified, authenticated interface.
+
+    **Key Features:**
+    • Domain intelligence and subdomain discovery
+    • IP geolocation and network analysis
+    • Real-time and historical WHOIS data
+    • Automated website screenshot capture
+    • Network relationship mapping
+    • BGP routing and security intelligence
+    • Infrastructure monitoring and health checks
+
+    **Authentication:** All endpoints require Bearer token authentication. Contact support for API access.
+  license:
+    name: Proprietary
+    url: https://whisper.security/terms
+  termsOfService: https://whisper.security/terms-of-service
+  title: Whisper API Platform
+  version: 1.0.0
+servers:
+- description: Whisper API Gateway
+  url: https://spider.noctisnet.com
+security:
+- bearerAuth: []
+tags:
+- description: "Advanced intelligence gathering for IP addresses and domains. Aggregates\
+    \ data from multiple sources including geolocation, network topology, DNS relationships,\
+    \ WHOIS records, and threat intelligence. Perfect for security analysis, infrastructure\
+    \ mapping, and risk assessment."
+  name: Intelligence Services
+- description: "Comprehensive domain discovery, analysis, and management tools. Find\
+    \ subdomains, identify similar domains, check trademark information, and explore\
+    \ domain relationships. Essential for brand protection and domain portfolio management."
+  name: Domain Management
+paths:
+  /domainer/api/domains/subdomains/{baseDomain}:
+    get:
+      description: "Finds domains that are subdomains of the given base domain (e.g.,\
+        \ finding 'www.example.com' for base 'example.com'). Allows filtering by absolute\
+        \ domain level (dot count). NOTE: This differs from relative depth filtering."
+      operationId: findSubdomains
+      parameters:
+      - description: "Base domain name (e.g., example.com)"
+        example: example.com
+        explode: false
+        in: path
+        name: baseDomain
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Maximum number of results
+        example: 100
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          format: int32
+          type: integer
+        style: form
+      - description: "Level of subdomains to find relative to the base domain (ALL,\
+          \ IMMEDIATE=one level deeper, MAX_DEPTH=deepest found relative to base)."
+        example: ALL
+        explode: true
+        in: query
+        name: level
+        required: false
+        schema:
+          enum:
+          - ALL
+          - IMMEDIATE
+          - MAX_DEPTH
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                results:
+                - www.example.com
+                - mail.example.com
+              schema:
+                $ref: '#/components/schemas/domainer_StringListResponse'
+          description: Subdomains found
+        "400":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Invalid base domain name
+      summary: Find subdomains
+      tags:
+      - Domain Management
+  /intelligence/v1/ip/{address}:
+    get:
+      description: |-
+        Analyzes an IP address and returns comprehensive intelligence data aggregated from multiple sources.
+
+        **🚀 Response Modes:**
+        - **Batch Mode** (Default): Complete JSON response in 2-3 seconds
+        - **Streaming Mode**: Server-Sent Events with 150ms time-to-first-byte
+          - Accept: `application/json` for batch mode
+          - Accept: `text/event-stream` for streaming mode
+
+        **Key Features:**
+        - Geolocation with city-level precision and confidence scores
+        - Network topology including ASN, BGP prefixes, and routing visibility
+        - ISP and organization identification
+        - DNS relationships showing associated domains
+        - Risk scoring based on threat intelligence feeds
+        - RPKI validation and routing security assessment
+        - Historical routing data and stability metrics
+
+        **Streaming Example:**
+        ```bash
+        curl -N -H 'Accept: text/event-stream' \
+             -H 'Authorization: Bearer {token}' \
+             https://api.example.com/intelligence/v1/ip/8.8.8.8
+        ```
+
+        **Note:** Swagger UI only displays batch mode. Use curl or EventSource for streaming.
+      operationId: getIpIntelligence
+      parameters:
+      - description: "IPv4 or IPv6 address to analyze. Supports standard notation\
+          \ (e.g., 192.168.1.1 or 2001:db8::1)"
+        explode: false
+        in: path
+        name: address
+        required: true
+        schema:
+          pattern: "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$|^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$"
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              examples:
+                google-dns:
+                  description: Response for Google's public DNS server
+                  summary: Google Public DNS
+                  value:
+                    query:
+                      ip: 8.8.8.8
+                      timestamp: 2025-09-13T10:30:00Z
+                      response_time_ms: 3500
+                    summary:
+                      organization: GOOGLE LLC
+                      location: "Mountain View, United States"
+                      network: 8.8.8.0/24
+                      asn_primary: AS15169
+                      risk_score: 0.0
+                      ip_type: hosting
+                      total_domains: 45
+                      total_dns_records: 120
+                    geolocation:
+                      country:
+                        iso_code: US
+                        name: United States
+                        confidence: 99
+                      coordinates:
+                        latitude: 37.4223
+                        longitude: -122.085
+                        accuracy_radius: 5
+                        time_zone: America/Los_Angeles
+                    network:
+                      prefixes:
+                        announced: 8.8.8.0/24
+                    metadata:
+                      data_sources:
+                      - geolocation_mmdb
+                      - janus_routing
+                      - graph_relationships
+                      partial_data: false
+                      api_version: 1.0.0
+                cloudflare-dns:
+                  description: Response for Cloudflare's public DNS resolver
+                  summary: Cloudflare DNS
+                  value:
+                    query:
+                      ip: 1.1.1.1
+                      timestamp: 2025-09-13T10:30:00Z
+                      response_time_ms: 3500
+                    summary:
+                      organization: CLOUDFLARE INC
+                      location: "San Francisco, United States"
+                      network: 1.1.1.0/24
+                      asn_primary: AS13335
+                      risk_score: 0.0
+                      ip_type: hosting
+                      total_domains: 45
+                      total_dns_records: 120
+                    geolocation:
+                      country:
+                        iso_code: US
+                        name: United States
+                        confidence: 99
+                      coordinates:
+                        latitude: 37.7749
+                        longitude: -122.4194
+                        accuracy_radius: 5
+                        time_zone: America/Los_Angeles
+                    network:
+                      prefixes:
+                        announced: 1.1.1.0/24
+                    metadata:
+                      data_sources:
+                      - geolocation_mmdb
+                      - janus_routing
+                      - graph_relationships
+                      partial_data: false
+                      api_version: 1.0.0
+                suspicious-ip:
+                  description: Response for an IP with elevated risk score
+                  summary: Suspicious IP
+                  value:
+                    query:
+                      ip: 185.220.101.45
+                      timestamp: 2025-09-13T10:30:00Z
+                      response_time_ms: 3500
+                    summary:
+                      organization: UNKNOWN ORG
+                      location: "Amsterdam, Netherlands"
+                      network: 185.220.101.0/24
+                      asn_primary: AS200052
+                      risk_score: 0.75
+                      ip_type: vpn
+                      total_domains: 45
+                      total_dns_records: 120
+                    geolocation:
+                      country:
+                        iso_code: NL
+                        name: Netherlands
+                        confidence: 99
+                      coordinates:
+                        latitude: 52.3676
+                        longitude: 4.9041
+                        accuracy_radius: 5
+                        time_zone: Europe/Amsterdam
+                    network:
+                      prefixes:
+                        announced: 185.220.101.0/24
+                    metadata:
+                      data_sources:
+                      - geolocation_mmdb
+                      - janus_routing
+                      - graph_relationships
+                      partial_data: false
+                      api_version: 1.0.0
+              schema:
+                $ref: '#/components/schemas/IpIntelligenceResponse'
+          description: IP intelligence data successfully retrieved
+          headers:
+            X-RateLimit-Limit:
+              description: Number of requests allowed per hour
+              explode: false
+              schema:
+                example: 1000
+                type: integer
+              style: simple
+            X-RateLimit-Remaining:
+              description: Number of requests remaining
+              explode: false
+              schema:
+                example: 999
+                type: integer
+              style: simple
+        "400":
+          content:
+            application/json:
+              example:
+                error: INVALID_IP_FORMAT
+                message: The provided IP address '256.256.256.256' is not a valid
+                  IPv4 or IPv6 address
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/ip/256.256.256.256
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid IP address format
+        "401":
+          content:
+            application/json:
+              example:
+                error: UNAUTHORIZED
+                message: Missing or invalid Bearer token. Please provide a valid API
+                  key in the Authorization header.
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/ip/8.8.8.8
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        "404":
+          content:
+            application/json:
+              example:
+                error: IP_NOT_FOUND
+                message: The IP address 192.168.1.1 is a private address and has no
+                  public intelligence data
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/ip/192.168.1.1
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: IP address not found or private/reserved
+        "429":
+          content:
+            application/json:
+              example:
+                error: RATE_LIMIT_EXCEEDED
+                message: API rate limit exceeded. Please retry after 3600 seconds.
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/ip/8.8.8.8
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              description: Number of seconds to wait before retrying
+              explode: false
+              schema:
+                example: 3600
+                type: integer
+              style: simple
+        "500":
+          content:
+            application/json:
+              example:
+                error: INTERNAL_ERROR
+                message: An error occurred while aggregating intelligence data. Please
+                  try again later.
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/ip/8.8.8.8
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error during intelligence aggregation
+      security:
+      - bearerAuth: []
+      summary: Get comprehensive IP address intelligence with streaming support
+      tags:
+      - Intelligence Services
+  /intelligence/v1/domain/{domain}:
+    get:
+      description: |-
+        Analyzes a domain name and returns comprehensive intelligence data from multiple sources.
+
+        **🚀 Response Modes:**
+        - **Batch Mode** (Default): Complete JSON response in 2-5 seconds
+        - **Streaming Mode**: Server-Sent Events with 200ms time-to-first-byte
+          - Accept: `application/json` for batch mode
+          - Accept: `text/event-stream` for streaming mode
+
+        **Key Features:**
+        - WHOIS registration data with ownership history
+        - Complete DNS record enumeration (A, AAAA, MX, NS, TXT, CNAME, SOA)
+        - Subdomain discovery and enumeration
+        - Link analysis showing connected domains
+        - IP intelligence for all resolved addresses
+        - Trademark and brand protection status
+        - Infrastructure relationships and shared hosting
+
+        **Streaming Example:**
+        ```bash
+        curl -N -H 'Accept: text/event-stream' \
+             -H 'Authorization: Bearer {token}' \
+             https://api.example.com/intelligence/v1/domain/example.com
+        ```
+
+        **Streaming Events:**
+        - `whois`: Domain registration info
+        - `dns`: DNS records
+        - `subdomains`: Discovered subdomains
+        - `ip_intelligence`: Intelligence for each resolved IP
+        - `complete`: Final aggregated data
+
+        **Input Processing:**
+        - Automatically strips protocols (http://, https://)
+        - Removes www prefix if present
+        - Validates domain format before processing
+
+        **Note:** Swagger UI only displays batch mode. Use curl or EventSource for streaming.
+      operationId: getDomainIntelligence
+      parameters:
+      - description: Domain name to analyze. Can be a root domain or subdomain. Protocol
+          and www prefix are automatically removed.
+        explode: false
+        in: path
+        name: domain
+        required: true
+        schema:
+          maxLength: 253
+          minLength: 3
+          pattern: "^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$"
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              examples:
+                popular-domain:
+                  description: Response for a well-known domain with extensive infrastructure
+                  summary: Popular domain (google.com)
+                  value:
+                    query:
+                      domain: google.com
+                      timestamp: 2025-09-13T10:30:00Z
+                      response_time_ms: 5500
+                    summary:
+                      domain_name: google.com
+                      registrar: MarkMonitor Inc.
+                      registration_date: 1997-09-15
+                      expiration_date: 2028-09-14
+                      status: active
+                      has_trademark: true
+                      dns_provider: ns1.google.com
+                      total_links_in: 150
+                      total_links_out: 200
+                    dns:
+                      a_records:
+                      - 93.184.215.14
+                      aaaa_records:
+                      - 2606:2800:21f:cb07:6820:80da:af6b:8b2c
+                      ns_records:
+                      - ns1.google.com
+                      - ns2.google.com
+                      mx_records:
+                      - priority: 10
+                        exchange: mail.google.com
+                    ip_intelligence:
+                      "93.184.215.14":
+                        ip_address: 93.184.215.14
+                        organization: Hosting Provider
+                        location: United States
+                        risk_score: 0.0
+                        ip_type: hosting
+                    metadata:
+                      data_sources:
+                      - whois
+                      - dns
+                      - graph
+                      - domainer
+                      partial_data: false
+                      api_version: 1.0.0
+                new-domain:
+                  description: Response for a newly registered domain with minimal
+                    infrastructure
+                  summary: Recently registered domain
+                  value:
+                    query:
+                      domain: newstartup2025.com
+                      timestamp: 2025-09-13T10:30:00Z
+                      response_time_ms: 5500
+                    summary:
+                      domain_name: newstartup2025.com
+                      registrar: "GoDaddy.com, LLC"
+                      registration_date: 2025-01-15
+                      expiration_date: 2026-01-15
+                      status: active
+                      has_trademark: false
+                      dns_provider: ns1.godaddy.com
+                      total_links_in: 0
+                      total_links_out: 5
+                    dns:
+                      a_records:
+                      - 93.184.215.14
+                      aaaa_records:
+                      - 2606:2800:21f:cb07:6820:80da:af6b:8b2c
+                      ns_records:
+                      - ns1.godaddy.com
+                      - ns2.godaddy.com
+                      mx_records:
+                      - priority: 10
+                        exchange: mail.newstartup2025.com
+                    ip_intelligence:
+                      "93.184.215.14":
+                        ip_address: 93.184.215.14
+                        organization: Hosting Provider
+                        location: United States
+                        risk_score: 0.0
+                        ip_type: hosting
+                    metadata:
+                      data_sources:
+                      - whois
+                      - dns
+                      - graph
+                      - domainer
+                      partial_data: false
+                      api_version: 1.0.0
+                suspicious-domain:
+                  description: Response for a domain with potential security concerns
+                  summary: Suspicious domain
+                  value:
+                    query:
+                      domain: phishing-example.tk
+                      timestamp: 2025-09-13T10:30:00Z
+                      response_time_ms: 5500
+                    summary:
+                      domain_name: phishing-example.tk
+                      registrar: Freenom
+                      registration_date: 2025-08-01
+                      expiration_date: 2025-09-01
+                      status: clientHold
+                      has_trademark: false
+                      dns_provider: ns01.freenom.com
+                      total_links_in: 0
+                      total_links_out: 0
+                    dns:
+                      a_records:
+                      - 93.184.215.14
+                      aaaa_records:
+                      - 2606:2800:21f:cb07:6820:80da:af6b:8b2c
+                      ns_records:
+                      - ns01.freenom.com
+                      - ns01.freenom.com
+                      mx_records:
+                      - priority: 10
+                        exchange: mail.phishing-example.tk
+                    ip_intelligence:
+                      "93.184.215.14":
+                        ip_address: 93.184.215.14
+                        organization: Hosting Provider
+                        location: United States
+                        risk_score: 0.75
+                        ip_type: hosting
+                    metadata:
+                      data_sources:
+                      - whois
+                      - dns
+                      - graph
+                      - domainer
+                      partial_data: false
+                      api_version: 1.0.0
+              schema:
+                $ref: '#/components/schemas/DomainIntelligenceResponse'
+          description: Domain intelligence data successfully retrieved
+          headers:
+            X-RateLimit-Limit:
+              description: Number of requests allowed per hour
+              explode: false
+              schema:
+                example: 500
+                type: integer
+              style: simple
+        "400":
+          content:
+            application/json:
+              example:
+                error: INVALID_DOMAIN_FORMAT
+                message: The provided domain 'not-a-valid-domain!' contains invalid
+                  characters
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/domain/not-a-valid-domain!
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid domain name format
+        "401":
+          content:
+            application/json:
+              example:
+                error: UNAUTHORIZED
+                message: Missing or invalid Bearer token. Please provide a valid API
+                  key in the Authorization header.
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/domain/example.com
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Authentication required
+        "404":
+          content:
+            application/json:
+              example:
+                error: DOMAIN_NOT_FOUND
+                message: The domain 'nonexistentdomain12345.com' is not registered
+                  or has no available data
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/domain/nonexistentdomain12345.com
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Domain not found or unregistered
+        "429":
+          content:
+            application/json:
+              example:
+                error: RATE_LIMIT_EXCEEDED
+                message: API rate limit exceeded. Please retry after 3600 seconds.
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/domain/example.com
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              example:
+                error: INTERNAL_ERROR
+                message: An error occurred while aggregating domain intelligence.
+                  Please try again later.
+                timestamp: 2025-09-13T10:30:00Z
+                path: /intelligence/v1/domain/example.com
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error during intelligence aggregation
+      security:
+      - bearerAuth: []
+      summary: Get comprehensive domain intelligence with streaming support
+      tags:
+      - Intelligence Services
+components:
+  schemas:
+    domainer_AsyncRequestDTO:
+      description: Parameters for an asynchronous domain search (either similarity
+        or free-text)
+      properties:
+        domainName:
+          description: (Required for SIMILARITY requests) Domain name to search for
+            similar domains
+          example: example.com
+          maxLength: 255
+          minLength: 3
+          type: string
+        similarityType:
+          description: "(Required for SIMILARITY requests) Type of similarity to use:\
+            \ CONTAINS, SOUNDING, PREFIX, SUFFIX, TYPO, UTFVARS"
+          enum:
+          - CONTAINS
+          - PREFIX
+          - SUFFIX
+          - TYPO
+          - SOUNDING
+          - UTFVARS
+          - TLD_VARIANTS
+          - TYPO_OR_SOUNDING
+          - LEVENSHTEIN
+          - CONTAINS
+          - SOUNDING
+          - PREFIX
+          - SUFFIX
+          - TYPO
+          - UTFVARS
+          example: SOUNDING
+          type: string
+        queryString:
+          description: (Required for SEARCH requests) Query string (supports standard
+            query syntax)
+          example: exampl~ OR "domain search" OR domain_exact:prefix* OR domain:token
+          type: string
+        operator:
+          default: AND
+          description: (Optional for SEARCH requests) Default operator between query
+            terms if not specified
+          enum:
+          - AND
+          - OR
+          example: AND
+          type: string
+        level:
+          default: ALL
+          description: (Optional for SEARCH requests) Filter results by absolute domain
+            level (dot count)
+          enum:
+          - ALL
+          - IMMEDIATE
+          - MAX_DEPTH
+          example: ALL
+          type: string
+        findAvailable:
+          default: false
+          description: "Set to true to find AVAILABLE similar domains (typo/sounding)\
+            \ instead of existing ones. Requires domainName, ignores similarityType/queryString/operator/level."
+          example: false
+          type: boolean
+        limit:
+          default: 100
+          description: Maximum number of results to return (use a reasonable limit
+            to prevent excessive processing)
+          example: 100
+          format: int32
+          maximum: 10000
+          minimum: 1
+          type: integer
+        callbackUrl:
+          description: URL to call with results when the search is complete (must
+            be accessible from the server)
+          example: https://webhook.example.com/callback
+          format: uri
+          type: string
+      required:
+      - callbackUrl
+      type: object
+    domainer_AsyncResponseDTO:
+      description: Response object for an asynchronous domain similarity search request
+        submission
+      properties:
+        requestId:
+          description: Unique identifier for tracking the request
+          example: 123e4567-e89b-12d3-a456-426614174000
+          format: uuid
+          readOnly: true
+          type: string
+        domainName:
+          description: Domain name being searched
+          example: example.com
+          readOnly: true
+          type: string
+        queryString:
+          description: Query string submitted for free-text search (if applicable)
+          example: exampl*
+          nullable: true
+          readOnly: true
+          type: string
+        message:
+          description: Status message providing information about the request
+          example: Request received and processing has started
+          readOnly: true
+          type: string
+        statusUrl:
+          description: URL to check for results (can be polled to monitor progress
+            and get results)
+          example: /api/domains/async/123e4567-e89b-12d3-a456-426614174000
+          format: uri
+          readOnly: true
+          type: string
+      required:
+      - domainName
+      - message
+      - requestId
+      - statusUrl
+      type: object
+    domainer_StringListResponse:
+      description: Response containing a list of strings
+      example:
+        results:
+        - results
+        - results
+      properties:
+        results:
+          description: List of string results
+          items:
+            description: A result string
+            type: string
+          type: array
+      type: object
+    domainer_AsyncResultDTO:
+      description: Results and status information for an asynchronous domain search
+        request (similarity or free-text)
+      properties:
+        requestId:
+          description: Unique identifier for the request
+          example: 123e4567-e89b-12d3-a456-426614174000
+          format: uuid
+          readOnly: true
+          type: string
+        domainName:
+          description: Domain name that was searched
+          example: example.com
+          readOnly: true
+          type: string
+        similarityType:
+          $ref: '#/components/schemas/domainer_SimilarityType'
+        queryString:
+          description: Query string used for the search (only for SEARCH requests)
+          example: exampl~ OR "domain search" OR prefix*
+          nullable: true
+          readOnly: true
+          type: string
+        operator:
+          description: Default operator used between query terms (only for SEARCH
+            requests)
+          enum:
+          - AND
+          - OR
+          example: AND
+          nullable: true
+          readOnly: true
+          type: string
+        level:
+          description: Absolute domain level filter applied (only for SEARCH requests)
+          enum:
+          - ALL
+          - IMMEDIATE
+          - MAX_DEPTH
+          example: ALL
+          nullable: true
+          readOnly: true
+          type: string
+        limit:
+          description: Maximum number of results requested
+          example: 100
+          format: int32
+          minimum: 1
+          readOnly: true
+          type: integer
+        createdAt:
+          description: Time when the request was created
+          format: date-time
+          readOnly: true
+          type: string
+        completedAt:
+          description: Time when the request was completed (null if still processing)
+          format: date-time
+          nullable: true
+          readOnly: true
+          type: string
+        status:
+          description: Request status
+          enum:
+          - PROCESSING
+          - COMPLETED
+          example: COMPLETED
+          readOnly: true
+          type: string
+        results:
+          description: List of similar domains found (null if still processing)
+          items:
+            description: A similar domain
+            example: exampel.com
+            type: string
+          nullable: true
+          readOnly: true
+          type: array
+        resultCount:
+          description: Total number of results found
+          example: 42
+          format: int32
+          minimum: 0
+          readOnly: true
+          type: integer
+        processingTimeMs:
+          description: Time taken to process the request in milliseconds (-1 if still
+            processing)
+          example: 1542
+          format: int64
+          minimum: -1
+          readOnly: true
+          type: integer
+      required:
+      - createdAt
+      - limit
+      - requestId
+      - status
+      type: object
+    domainer_SimilarityType:
+      description: Type of similarity that was used for the search
+      enum:
+      - CONTAINS
+      - PREFIX
+      - SUFFIX
+      - TYPO
+      - SOUNDING
+      - UTFVARS
+      - TLD_VARIANTS
+      - TYPO_OR_SOUNDING
+      - LEVENSHTEIN
+      example: TYPO
+      readOnly: true
+      type: string
+    ErrorResponse:
+      example:
+        path: /intelligence/v1/ip/invalid
+        error: INVALID_IP_FORMAT
+        message: The provided IP address is not valid
+        timestamp: 2025-09-13T10:30:00Z
+      properties:
+        error:
+          description: Error code for programmatic handling
+          example: INVALID_IP_FORMAT
+          type: string
+        message:
+          description: Human-readable error message
+          example: The provided IP address is not valid
+          type: string
+        timestamp:
+          description: Timestamp when the error occurred
+          example: 2025-09-13T10:30:00Z
+          format: date-time
+          type: string
+        path:
+          description: Request path that caused the error
+          example: /intelligence/v1/ip/invalid
+          type: string
+      required:
+      - error
+      - message
+      - timestamp
+      type: object
+    IpIntelligenceResponse:
+      description: "Comprehensive IP intelligence response containing geolocation,\
+        \ network, security, and relationship data"
+      example:
+        summary:
+          risk_score: 0.0
+          asn_primary: AS15169
+          organization: GOOGLE LLC
+          total_dns_records: 120
+          location: "Mountain View, United States"
+          total_domains: 45
+          ip_type: hosting
+          network: 8.8.8.0/24
+        relationships: "{}"
+        security: "{}"
+        metadata: "{}"
+        query:
+          ip: 8.8.8.8
+          response_time_ms: 3500
+          timestamp: 2025-09-13T10:30:00Z
+        isp: "{}"
+        reputation: "{}"
+        asn_details: "{}"
+        history: "{}"
+        validation: "{}"
+        geolocation:
+          country:
+            confidence: 99
+            name: United States
+            iso_code: US
+          coordinates:
+            latitude: 37.4223
+            accuracy_radius: 5
+            time_zone: America/Los_Angeles
+            longitude: -122.085
+        network: "{}"
+      properties:
+        query:
+          $ref: '#/components/schemas/IpIntelligenceResponse_query'
+        summary:
+          $ref: '#/components/schemas/IpIntelligenceResponse_summary'
+        geolocation:
+          $ref: '#/components/schemas/IpIntelligenceResponse_geolocation'
+        network:
+          description: Network and routing information
+          type: object
+        isp:
+          description: ISP and organization details
+          type: object
+        relationships:
+          description: DNS and infrastructure relationships
+          type: object
+        reputation:
+          description: Reputation and threat intelligence
+          type: object
+        security:
+          description: Security assessment and RPKI status
+          type: object
+        validation:
+          description: IP validation details
+          type: object
+        history:
+          description: Historical routing data
+          type: object
+        asn_details:
+          description: ASN ownership and prefix details
+          type: object
+        metadata:
+          description: Response metadata and data sources
+          type: object
+      type: object
+    DomainIntelligenceResponse:
+      description: "Comprehensive domain intelligence response containing registration,\
+        \ DNS, relationships, and IP data"
+      example:
+        summary:
+          domain_name: example.com
+          registration_date: 1995-08-14
+          registrar: MarkMonitor Inc.
+          total_links_in: 1500
+          dns_provider: ns1.google.com
+          expiration_date: 2025-08-13
+          total_links_out: 250
+          status: active
+          has_trademark: true
+        relationships: "{}"
+        ip_intelligence: "{}"
+        metadata: "{}"
+        query:
+          domain: example.com
+          response_time_ms: 5500
+          timestamp: 2025-09-13T10:30:00Z
+        dns: "{}"
+        registration: "{}"
+        trademark: "{}"
+      properties:
+        query:
+          $ref: '#/components/schemas/DomainIntelligenceResponse_query'
+        summary:
+          $ref: '#/components/schemas/DomainIntelligenceResponse_summary'
+        registration:
+          description: WHOIS registration details
+          type: object
+        dns:
+          description: "DNS records (A, AAAA, MX, NS, TXT, etc.)"
+          type: object
+        relationships:
+          description: Related domains and infrastructure
+          type: object
+        trademark:
+          description: Trademark information
+          type: object
+        ip_intelligence:
+          description: Intelligence for resolved IP addresses
+          type: object
+        metadata:
+          description: Response metadata and data sources
+          type: object
+      type: object
+    IpIntelligenceResponse_query:
+      description: Query metadata
+      example:
+        ip: 8.8.8.8
+        response_time_ms: 3500
+        timestamp: 2025-09-13T10:30:00Z
+      properties:
+        ip:
+          description: Queried IP address
+          example: 8.8.8.8
+          type: string
+        timestamp:
+          description: Query timestamp
+          example: 2025-09-13T10:30:00Z
+          format: date-time
+          type: string
+        response_time_ms:
+          description: Response time in milliseconds
+          example: 3500
+          type: integer
+      type: object
+    IpIntelligenceResponse_summary:
+      description: Executive summary of IP intelligence
+      example:
+        risk_score: 0.0
+        asn_primary: AS15169
+        organization: GOOGLE LLC
+        total_dns_records: 120
+        location: "Mountain View, United States"
+        total_domains: 45
+        ip_type: hosting
+        network: 8.8.8.0/24
+      properties:
+        organization:
+          description: Organization name
+          example: GOOGLE LLC
+          type: string
+        location:
+          description: Geographic location
+          example: "Mountain View, United States"
+          type: string
+        network:
+          description: Network prefix
+          example: 8.8.8.0/24
+          type: string
+        asn_primary:
+          description: Primary ASN
+          example: AS15169
+          type: string
+        risk_score:
+          description: Risk score (0-1)
+          example: 0.0
+          type: number
+        ip_type:
+          description: IP type classification
+          example: hosting
+          type: string
+        total_domains:
+          description: Number of associated domains
+          example: 45
+          type: integer
+        total_dns_records:
+          description: Number of DNS records
+          example: 120
+          type: integer
+      type: object
+    IpIntelligenceResponse_geolocation_country:
+      example:
+        confidence: 99
+        name: United States
+        iso_code: US
+      properties:
+        iso_code:
+          description: ISO 3166-1 alpha-2 code
+          example: US
+          type: string
+        name:
+          description: Country name
+          example: United States
+          type: string
+        confidence:
+          description: Confidence score (0-100)
+          example: 99
+          type: integer
+      type: object
+    IpIntelligenceResponse_geolocation_coordinates:
+      example:
+        latitude: 37.4223
+        accuracy_radius: 5
+        time_zone: America/Los_Angeles
+        longitude: -122.085
+      properties:
+        latitude:
+          description: Latitude
+          example: 37.4223
+          type: number
+        longitude:
+          description: Longitude
+          example: -122.085
+          type: number
+        accuracy_radius:
+          description: Accuracy radius in kilometers
+          example: 5
+          type: integer
+        time_zone:
+          description: IANA time zone
+          example: America/Los_Angeles
+          type: string
+      type: object
+    IpIntelligenceResponse_geolocation:
+      description: Geolocation data with confidence scores
+      example:
+        country:
+          confidence: 99
+          name: United States
+          iso_code: US
+        coordinates:
+          latitude: 37.4223
+          accuracy_radius: 5
+          time_zone: America/Los_Angeles
+          longitude: -122.085
+      properties:
+        country:
+          $ref: '#/components/schemas/IpIntelligenceResponse_geolocation_country'
+        coordinates:
+          $ref: '#/components/schemas/IpIntelligenceResponse_geolocation_coordinates'
+      type: object
+    DomainIntelligenceResponse_query:
+      example:
+        domain: example.com
+        response_time_ms: 5500
+        timestamp: 2025-09-13T10:30:00Z
+      properties:
+        domain:
+          description: Queried domain
+          example: example.com
+          type: string
+        timestamp:
+          description: Query timestamp
+          example: 2025-09-13T10:30:00Z
+          format: date-time
+          type: string
+        response_time_ms:
+          description: Response time in milliseconds
+          example: 5500
+          type: integer
+      type: object
+    DomainIntelligenceResponse_summary:
+      example:
+        domain_name: example.com
+        registration_date: 1995-08-14
+        registrar: MarkMonitor Inc.
+        total_links_in: 1500
+        dns_provider: ns1.google.com
+        expiration_date: 2025-08-13
+        total_links_out: 250
+        status: active
+        has_trademark: true
+      properties:
+        domain_name:
+          description: Domain name
+          example: example.com
+          type: string
+        registrar:
+          description: Domain registrar
+          example: MarkMonitor Inc.
+          type: string
+        registration_date:
+          description: Registration date
+          example: 1995-08-14
+          type: string
+        expiration_date:
+          description: Expiration date
+          example: 2025-08-13
+          type: string
+        status:
+          description: Domain status
+          example: active
+          type: string
+        has_trademark:
+          description: Trademark status
+          example: true
+          type: boolean
+        dns_provider:
+          description: Primary DNS provider
+          example: ns1.google.com
+          type: string
+        total_links_in:
+          description: Incoming links
+          example: 1500
+          type: integer
+        total_links_out:
+          description: Outgoing links
+          example: 250
+          type: integer
+      type: object
+  securitySchemes:
+    bearerAuth:
+      description: "Bearer token authentication. Use format: Bearer {token}"
+      scheme: bearer
+      type: http
+
