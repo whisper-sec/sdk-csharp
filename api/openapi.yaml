@@ -1,0 +1,4444 @@
+openapi: 3.0.1
+info:
+  contact:
+    name: Whisper Security
+    url: https://whisper.security
+  description: Enterprise threat intelligence and security operations API
+  title: Whisper Security API
+  version: "1.0"
+servers:
+- description: Generated server url
+  url: http://api.whisper.security
+tags:
+- description: Synchronous IP and domain enrichment
+  name: Indicators
+- description: Geolocation lookups and searches
+  name: Location
+- description: Asynchronous operational tools
+  name: Operations
+paths:
+  /v1/ops/monitoring/{checkId}:
+    delete:
+      description: Delete a monitoring check and stop all monitoring for the target.
+      operationId: deleteMonitorCheck
+      parameters:
+      - description: Check ID
+        example: abc123
+        explode: false
+        in: path
+        name: checkId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Check not found or access denied.
+        "204":
+          description: Check deleted successfully.
+      security:
+      - bearerAuth: []
+      summary: Delete Monitoring Check
+      tags:
+      - Operations
+    get:
+      description: Get details of a specific monitoring check including uptime metrics.
+      operationId: getMonitorCheck
+      parameters:
+      - description: Check ID
+        example: abc123
+        explode: false
+        in: path
+        name: checkId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitorCheckResponse"
+          description: Check details.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Check not found or access denied.
+      security:
+      - bearerAuth: []
+      summary: Get Monitoring Check
+      tags:
+      - Operations
+    put:
+      description: Update an existing monitoring check configuration.
+      operationId: updateMonitorCheck
+      parameters:
+      - description: Check ID
+        example: abc123
+        explode: false
+        in: path
+        name: checkId
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonitorCheckRequest"
+        description: Updated check configuration
+        required: true
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitorCheckResponse"
+          description: Check updated successfully.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Check not found or access denied.
+      security:
+      - bearerAuth: []
+      summary: Update Monitoring Check
+      tags:
+      - Operations
+  /v1/ops/tracking/{type}/{value}:
+    delete:
+      description: |
+        <p>Stop tracking changes for an indicator. Optionally delete all change history.</p>
+      operationId: stopChangeTracking
+      parameters:
+      - description: "Indicator type: ip or domain"
+        explode: false
+        in: path
+        name: type
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Indicator value
+        explode: false
+        in: path
+        name: value
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Delete change history as well
+        explode: true
+        in: query
+        name: deleteHistory
+        required: false
+        schema:
+          default: false
+          type: boolean
+        style: form
+      responses:
+        "401":
+          description: Authentication failed.
+        "204":
+          description: Tracking stopped successfully.
+      security:
+      - bearerAuth: []
+      summary: Stop Change Tracking
+      tags:
+      - Operations
+    get:
+      description: |
+        <p>Retrieve detected changes for a tracked indicator. Returns the current tracking configuration,
+        baseline snapshot, and list of all detected changes.</p>
+        <h4>Response Includes:</h4>
+        <ul>
+            <li><b>tracking:</b> Current tracking configuration (enabled, frequency, fields, next check)</li>
+            <li><b>baseline:</b> The stored baseline snapshot data</li>
+            <li><b>changes:</b> Array of detected changes with timestamps, old/new values</li>
+            <li><b>totalChanges:</b> Total number of changes detected</li>
+        </ul>
+      operationId: getChanges
+      parameters:
+      - description: "Indicator type: ip or domain"
+        example: domain
+        explode: false
+        in: path
+        name: type
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Indicator value
+        example: google.com
+        explode: false
+        in: path
+        name: value
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: ISO 8601 timestamp to get changes from
+        example: 2025-01-01T00:00:00Z
+        explode: true
+        in: query
+        name: since
+        required: false
+        schema:
+          type: string
+        style: form
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeTrackingResponse"
+          description: Successfully retrieved changes.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Indicator is not being tracked.
+      security:
+      - bearerAuth: []
+      summary: Get Detected Changes
+      tags:
+      - Operations
+    post:
+      description: |
+        <p>Start tracking changes for an IP or domain. When tracking is started, a baseline snapshot is captured.
+        Subsequent checks will compare against this baseline and record any detected changes.</p>
+        <h4>Trackable Fields for Domains:</h4>
+        <ul>
+            <li><b>dns:</b> A, AAAA, MX, NS, TXT, CNAME records</li>
+            <li><b>whois:</b> Registrant, registrar, dates, nameservers</li>
+            <li><b>ssl:</b> Certificate issuer, expiry, SAN</li>
+            <li><b>subdomains:</b> Discovered subdomains</li>
+            <li><b>ips:</b> Resolved IP addresses</li>
+        </ul>
+        <h4>Trackable Fields for IPs:</h4>
+        <ul>
+            <li><b>geolocation:</b> Country, city, coordinates</li>
+            <li><b>asn:</b> ASN number, organization</li>
+            <li><b>routing:</b> BGP routing status</li>
+            <li><b>rpki:</b> RPKI validation status</li>
+            <li><b>reverse_dns:</b> PTR records</li>
+        </ul>
+        <h4>Frequencies:</h4>
+        <ul>
+            <li><b>hourly:</b> Check every hour</li>
+            <li><b>daily:</b> Check once per day (default)</li>
+            <li><b>weekly:</b> Check once per week</li>
+        </ul>
+      operationId: startChangeTracking
+      parameters:
+      - description: "Indicator type: ip or domain"
+        example: domain
+        explode: false
+        in: path
+        name: type
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Indicator value (IP address or domain name)
+        example: google.com
+        explode: false
+        in: path
+        name: value
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeTrackingRequest"
+        description: Tracking configuration
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: Tracking started. Job ID returned for baseline capture.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid indicator type or fields.
+      security:
+      - bearerAuth: []
+      summary: Start Change Tracking
+      tags:
+      - Operations
+  /v1/ops/tracking/{type}/{value}/check:
+    post:
+      description: |
+        <p>Trigger an immediate check for changes on a tracked indicator. Creates a job to compare
+        current data against the stored baseline.</p>
+      operationId: triggerCheck
+      parameters:
+      - description: Indicator type
+        explode: false
+        in: path
+        name: type
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Indicator value
+        explode: false
+        in: path
+        name: value
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "401":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/JsonNode"
+          description: Authentication failed.
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: Check triggered. Job ID returned.
+        "404":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/JsonNode"
+          description: Indicator is not being tracked.
+      security:
+      - bearerAuth: []
+      summary: Trigger Immediate Check
+      tags:
+      - Operations
+  /v1/ops/screenshots/schedule:
+    post:
+      description: |
+        <p>Create a recurring job to capture website screenshots at regular intervals. Essential for monitoring website changes, detecting defacements, and tracking competitor updates.</p>
+        <h4>Schedule Options:</h4>
+        <ul>
+            <li><b>Cron Expression:</b> Full cron syntax support (e.g., `0 0 * * * *` = hourly)</li>
+            <li><b>Frequency Presets:</b> hourly, daily, weekly, monthly</li>
+            <li><b>Timezone:</b> Specify timezone for accurate scheduling</li>
+            <li><b>Retention:</b> Auto-cleanup old screenshots (default: keep last 30)</li>
+        </ul>
+        <h4>Performance:</h4>
+        <ul>
+            <li><b>Setup Time:</b> ~2 seconds to create schedule</li>
+            <li><b>Screenshot Time:</b> 10-30 seconds per capture</li>
+        </ul>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Automated defacement detection</li>
+            <li>Compliance monitoring and archival</li>
+            <li>Competitor website tracking</li>
+            <li>Visual regression testing</li>
+        </ul>
+      operationId: scheduleScreenshot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScreenshotRequest"
+        description: "Schedule configuration including URL, schedule timing, and screenshot\
+          \ options."
+        required: true
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: "Schedule successfully created. Poll `/v1/ops/jobs/{jobId}`\
+            \ for status."
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid schedule configuration or missing required fields.
+      security:
+      - bearerAuth: []
+      summary: Schedule Recurring Screenshots (Asynchronous)
+      tags:
+      - Operations
+  /v1/ops/screenshots/capture:
+    post:
+      description: |
+        <p>Initiates an asynchronous job to capture a screenshot of a website. Supports various viewport sizes, full-page captures, and JavaScript rendering.</p>
+        <p><b>Performance Note:</b> A typical screenshot capture takes 10-30 seconds. Poll the `/v1/ops/jobs/{jobId}` endpoint to retrieve the URL of the final image.</p>
+        <p><b>Output:</b> The job result will contain a URL to download the screenshot image in the specified format (PNG, JPEG, or WebP).</p>
+      operationId: createScreenshot
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScreenshotRequest"
+        description: The URL and options for the screenshot capture.
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: Screenshot job successfully accepted.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid URL or options provided.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Rate limit exceeded.
+      security:
+      - bearerAuth: []
+      summary: Capture a Website Screenshot (Asynchronous)
+      tags:
+      - Operations
+  /v1/ops/scans/map:
+    post:
+      description: |
+        <p>Creates a comprehensive map of infrastructure relationships starting from a domain or IP. Discovers connected assets through shared hosting, DNS, certificates, and network relationships.</p>
+        <h4>Mapping Depth Levels:</h4>
+        <ul>
+            <li><b>Depth 1:</b> Direct relationships only (~30 seconds, 10-50 assets)</li>
+            <li><b>Depth 2:</b> 2 hops out (~2-5 minutes, 50-500 assets)</li>
+            <li><b>Depth 3:</b> 3 hops out (~10-30 minutes, 500-5000 assets)</li>
+        </ul>
+        <h4>Relationship Types Discovered:</h4>
+        <ul>
+            <li>Domains on same IP</li>
+            <li>Domains sharing nameservers</li>
+            <li>Domains with same SSL certificate</li>
+            <li>IPs in same ASN</li>
+            <li>Domains with same registrant</li>
+        </ul>
+        <h4>Output Format:</h4>
+        <p>Results returned as graph data compatible with visualization libraries (nodes and edges).</p>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Threat actor infrastructure mapping</li>
+            <li>Discovering related phishing domains</li>
+            <li>Finding shadow IT and forgotten assets</li>
+        </ul>
+      operationId: createInfrastructureMap
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InfrastructureMapRequest"
+        description: |
+          Mapping configuration. Example:
+          ```json
+          {
+            "startPoint": "example.com",
+            "depth": 2
+          }
+          ```
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: "Mapping job successfully accepted. Poll `/v1/ops/jobs/{jobId}`\
+            \ for results."
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid starting point or depth (must be 1-3).
+      security:
+      - bearerAuth: []
+      summary: Map Infrastructure Relationships (Asynchronous)
+      tags:
+      - Operations
+  /v1/ops/scans/infrastructure:
+    post:
+      description: |
+        <p>Initiates a comprehensive security scan of a domain's infrastructure. Performs reconnaissance, port scanning, service detection, and vulnerability assessment.</p>
+        <h4>Scan Types:</h4>
+        <ul>
+            <li><b>comprehensive:</b> Full scan including all modules (recommended for complete assessment)</li>
+            <li><b>subdomains:</b> Subdomain enumeration only</li>
+            <li><b>ports:</b> Port scanning and service detection</li>
+            <li><b>technologies:</b> Technology stack detection</li>
+            <li><b>vulnerabilities:</b> Known vulnerability checks</li>
+            <li><b>ssl:</b> SSL/TLS configuration and certificate analysis</li>
+            <li><b>dns:</b> DNS configuration and zone transfer tests</li>
+            <li><b>whois:</b> Registration and ownership information</li>
+        </ul>
+        <h4>Performance:</h4>
+        <ul>
+            <li><b>Quick scans:</b> 30-60 seconds (subdomains, dns, whois)</li>
+            <li><b>Comprehensive scan:</b> 5-15 minutes depending on infrastructure size</li>
+        </ul>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Pre-engagement reconnaissance for penetration testing</li>
+            <li>Attack surface assessment</li>
+            <li>Infrastructure inventory and mapping</li>
+            <li>Vulnerability management</li>
+        </ul>
+      operationId: createInfrastructureScan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanRequest"
+        description: Scan configuration including target domain and scan type.
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: "Scan job successfully accepted. Poll `/v1/ops/jobs/{jobId}`\
+            \ for results."
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid domain or scan type.
+      security:
+      - bearerAuth: []
+      summary: Infrastructure Security Scan (Asynchronous)
+      tags:
+      - Operations
+  /v1/ops/monitoring:
+    get:
+      description: |
+        <p>Get a list of all monitoring checks created by the authenticated user.</p>
+        <h4>Filtering:</h4>
+        <ul>
+            <li><b>type:</b> Filter by check type (api, ssl, dns)</li>
+            <li><b>status:</b> Filter by status (passing, failing, degraded, pending)</li>
+        </ul>
+      operationId: listMonitorChecks
+      parameters:
+      - description: Filter by check type
+        example: api
+        explode: true
+        in: query
+        name: type
+        required: false
+        schema:
+          type: string
+        style: form
+      - description: Filter by status
+        example: passing
+        explode: true
+        in: query
+        name: status
+        required: false
+        schema:
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitorListResponse"
+          description: List of monitoring checks.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+      security:
+      - bearerAuth: []
+      summary: List Monitoring Checks
+      tags:
+      - Operations
+    post:
+      description: |
+        <p>Create a new monitoring check to track uptime and performance of a URL or endpoint.</p>
+        <h4>Check Types:</h4>
+        <ul>
+            <li><b>api:</b> HTTP/HTTPS endpoint monitoring - checks status code, response time, content</li>
+            <li><b>ssl:</b> SSL certificate monitoring - validates certificate and tracks expiry</li>
+            <li><b>dns:</b> DNS record monitoring - validates DNS resolution and record values</li>
+        </ul>
+        <h4>Frequency Options:</h4>
+        <p>Check frequency in minutes: 1, 5, 10, 15, 30, 60, 1440 (daily)</p>
+        <h4>Locations:</h4>
+        <p>Checks can run from multiple global locations: us-east-1, us-west-1, eu-west-1, ap-southeast-1</p>
+      operationId: createMonitorCheck
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonitorCheckRequest"
+        description: Monitoring check configuration
+        required: true
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitorCheckResponse"
+          description: Monitoring check created successfully.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid request - missing name or URL.
+      security:
+      - bearerAuth: []
+      summary: Create Monitoring Check
+      tags:
+      - Operations
+  /v1/ops/monitoring/{target}/alert:
+    post:
+      description: |
+        <p>Create alert rules for a monitored asset. Get notified via webhook, email, or Slack when specific conditions are met.</p>
+        <h4>Alert Types:</h4>
+        <ul>
+            <li><b>downtime:</b> Site becomes unreachable</li>
+            <li><b>dns_change:</b> DNS records modified</li>
+            <li><b>whois_change:</b> Registration details updated</li>
+            <li><b>ssl_expiring:</b> Certificate expires soon (7, 14, 30 days)</li>
+            <li><b>content_change:</b> Page content modified</li>
+            <li><b>technology_change:</b> Tech stack changes detected</li>
+        </ul>
+        <h4>Notification Channels:</h4>
+        <ul>
+            <li>Webhook (POST to your endpoint)</li>
+            <li>Email</li>
+            <li>Slack</li>
+            <li>PagerDuty</li>
+        </ul>
+        <h4>Example Configuration:</h4>
+        <pre><code>{
+          "type": "ssl_expiring",
+          "threshold_days": 14,
+          "channels": ["email", "slack"],
+          "email": "alerts@example.com",
+          "slack_webhook": "https://hooks.slack.com/..."
+        }</code></pre>
+      operationId: createMonitoringAlert
+      parameters:
+      - description: The domain or IP address to configure alerts for.
+        example: example.com
+        explode: false
+        in: path
+        name: target
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MonitoringAlertRequest"
+        description: "Alert configuration including type, thresholds, and notification\
+          \ channels."
+        required: true
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: "Alert configuration job accepted. Poll `/v1/ops/jobs/{jobId}`\
+            \ for status."
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid alert configuration.
+      security:
+      - bearerAuth: []
+      summary: Configure Monitoring Alerts (Asynchronous)
+      tags:
+      - Operations
+  /v1/ops/monitoring/{checkId}/trigger:
+    post:
+      description: Trigger an immediate execution of a monitoring check.
+      operationId: triggerMonitorCheck
+      parameters:
+      - description: Check ID
+        example: abc123
+        explode: false
+        in: path
+        name: checkId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Check not found or access denied.
+        "202":
+          description: Check triggered successfully.
+      security:
+      - bearerAuth: []
+      summary: Trigger Manual Check
+      tags:
+      - Operations
+  /v1/ops/enrichment/similar-domains:
+    post:
+      description: |
+        <p>Generates potential lookalike, typosquatting, and homoglyph domains for brand protection and threat hunting.</p>
+        <h4>Detection Methods:</h4>
+        <ul>
+            <li>Typosquatting (keyboard proximity)</li>
+            <li>Homoglyph attacks (visually similar characters)</li>
+            <li>Combosquatting (brand + keyword)</li>
+            <li>TLD variations</li>
+        </ul>
+        <h4>Performance:</h4>
+        <p>Typically completes in 5-15 seconds depending on options.</p>
+      operationId: similarDomains
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimilarDomainsOpsRequest"
+        description: Similar domains request with domain and options.
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid domain or options.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: Similar domains job created successfully.
+      security:
+      - bearerAuth: []
+      summary: Find Similar Domains (Asynchronous)
+      tags:
+      - Operations
+  /v1/ops/enrichment/search:
+    post:
+      description: |
+        <p>Initiates an asynchronous job to search for indicators matching specific criteria. This endpoint is extremely powerful for infrastructure discovery and threat hunting.</p>
+        <p><b>Performance Note:</b> Searches on WHOIS fields (like `registrantCompany`) are data-intensive and can take over 50 seconds to complete. This endpoint is therefore asynchronous by design. Poll the `/v1/ops/jobs/{jobId}` endpoint to retrieve results.</p>
+        <h4>Example Search Queries:</h4>
+        <ul>
+            <li>`registrantCompany:EvilCorp` - Find all domains registered by EvilCorp</li>
+            <li>`asn:15169` - Find all IPs in Google's ASN</li>
+            <li>`city:"San Francisco"` - Find all IPs geolocated to San Francisco</li>
+        </ul>
+      operationId: searchIndicators
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchRequest"
+        description: The search query and configuration.
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: Search job successfully accepted.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Rate limit exceeded for search operations.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid search query or parameters.
+      security:
+      - bearerAuth: []
+      summary: Search Indicators (Asynchronous)
+      tags:
+      - Operations
+  /v1/ops/enrichment/bulk:
+    post:
+      description: |
+        <p>Process multiple indicators (IPs and/or domains) in a single request. This endpoint is optimized for batch processing and can handle up to 100 indicators per request.</p>
+        <p><b>Performance:</b> Processing time depends on batch size and requested data modules. Expect 5-30 seconds for typical batches.</p>
+        <p><b>Rate Limits:</b> Limited to 10 requests per minute due to the resource-intensive nature of bulk operations.</p>
+      operationId: bulkEnrichment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkRequest"
+        description: List of indicators and processing options.
+        required: true
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid request. Empty indicator list or exceeds 100 indicator
+            limit.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Rate limit exceeded for bulk operations.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResponse"
+          description: Bulk job successfully accepted for processing.
+      security:
+      - bearerAuth: []
+      summary: Bulk Indicator Enrichment (Asynchronous)
+      tags:
+      - Operations
+  /v1/location/ips/bulk:
+    post:
+      description: |
+        <p>Retrieve geolocation data for up to 1000 IP addresses in a single request. Optimized for batch processing with parallel lookups.</p>
+        <h4>Request Format:</h4>
+        <p>Send a JSON array of IP addresses (IPv4 or IPv6):</p>
+        <pre><code>["8.8.8.8", "1.1.1.1", "208.67.222.222"]</code></pre>
+        <h4>Performance:</h4>
+        <ul>
+            <li><b>Response Time:</b> 500-2000ms for typical batches (10-100 IPs)</li>
+            <li><b>Processing:</b> Parallel lookups with automatic batching</li>
+            <li><b>Limit:</b> Maximum 1000 IPs per request</li>
+            <li><b>Rate Limit:</b> 10 requests per minute</li>
+        </ul>
+        <h4>Response Format:</h4>
+        <p>Returns an array of geolocation objects matching the order of input IPs. Failed lookups are indicated with error objects.</p>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Batch enrichment of access logs</li>
+            <li>Bulk fraud scoring</li>
+            <li>Geographic distribution analysis</li>
+            <li>Network infrastructure mapping</li>
+        </ul>
+      operationId: getBulkIpLocation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              items:
+                type: string
+              type: array
+        description: JSON array of IP addresses to lookup. Maximum 1000 IPs per request.
+        required: true
+      responses:
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Rate limit exceeded for bulk operations.
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved bulk geolocation data.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: "Invalid request format. Expected JSON array of IP addresses,\
+            \ or array exceeds 1000 IP limit."
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+      security:
+      - bearerAuth: []
+      summary: Bulk IP Geolocation Lookup
+      tags:
+      - Location
+  /v1/ops/tracking:
+    get:
+      description: |
+        <p>Get a list of all indicators currently being tracked for changes by the authenticated user.</p>
+      operationId: listTrackedIndicators
+      responses:
+        "200":
+          content:
+            application/json: {}
+          description: List of tracked indicators.
+        "401":
+          content:
+            '*/*':
+              schema:
+                items:
+                  $ref: "#/components/schemas/TrackingConfig"
+                type: array
+          description: Authentication failed.
+      security:
+      - bearerAuth: []
+      summary: List Tracked Indicators
+      tags:
+      - Operations
+  /v1/ops/screenshots/history:
+    get:
+      description: |
+        <p>Retrieve all previously captured screenshots for a specific URL, ordered by capture time (newest first). Includes download URLs and metadata for each capture.</p>
+        <h4>Response Includes:</h4>
+        <ul>
+            <li><b>Download URL:</b> Direct link to screenshot image</li>
+            <li><b>Capture Time:</b> Timestamp when screenshot was taken</li>
+            <li><b>Dimensions:</b> Image width and height</li>
+            <li><b>Format:</b> Image format (PNG, JPEG, WebP)</li>
+            <li><b>File Size:</b> Size in bytes</li>
+        </ul>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Review website evolution over time</li>
+            <li>Compare screenshots for change detection</li>
+            <li>Download historical screenshots for reporting</li>
+        </ul>
+      operationId: getScreenshotHistory
+      parameters:
+      - description: The target domain or URL to retrieve screenshot history for.
+        example: example.com
+        explode: true
+        in: query
+        name: target
+        required: true
+        schema:
+          type: string
+        style: form
+      - description: Maximum number of screenshots to return.
+        example: 10
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 10
+          format: int32
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved screenshot history.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid URL parameter.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: No screenshots found for the specified URL.
+      security:
+      - bearerAuth: []
+      summary: Get Screenshot History
+      tags:
+      - Operations
+  /v1/ops/monitoring/{checkId}/results:
+    get:
+      description: |
+        <p>Get the execution history for a monitoring check.</p>
+        <h4>Response includes for each result:</h4>
+        <ul>
+            <li>Timestamp of execution</li>
+            <li>Success/failure status</li>
+            <li>Response time</li>
+            <li>HTTP status code (for API checks)</li>
+            <li>Error message (if failed)</li>
+        </ul>
+      operationId: getMonitorResults
+      parameters:
+      - description: Check ID
+        example: abc123
+        explode: false
+        in: path
+        name: checkId
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Maximum number of results to return
+        example: 10
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 10
+          format: int32
+          type: integer
+        style: form
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Check not found or access denied.
+        "200":
+          content:
+            application/json: {}
+          description: Check execution history.
+      security:
+      - bearerAuth: []
+      summary: Get Check Results
+      tags:
+      - Operations
+  /v1/ops/monitoring/status/{target}:
+    get:
+      description: |
+        <p>Retrieves current monitoring configuration and historical metrics for a domain or IP address.</p>
+        <h4>Status Information:</h4>
+        <ul>
+            <li><b>Monitoring State:</b> Active, paused, or not monitored</li>
+            <li><b>Check Frequency:</b> How often checks are performed</li>
+            <li><b>Active Alerts:</b> Currently triggered alert conditions</li>
+            <li><b>Last Check:</b> Timestamp of most recent check</li>
+        </ul>
+        <h4>Metrics Included:</h4>
+        <ul>
+            <li>Uptime percentage (last 30 days)</li>
+            <li>Average response time</li>
+            <li>SSL certificate expiration countdown</li>
+            <li>DNS change events</li>
+            <li>WHOIS change events</li>
+        </ul>
+      operationId: getMonitoringStatus
+      parameters:
+      - description: The domain or IP address to check monitoring status for.
+        example: example.com
+        explode: false
+        in: path
+        name: target
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Target is not being monitored.
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved monitoring status.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+      security:
+      - bearerAuth: []
+      summary: Get Monitoring Status and Metrics
+      tags:
+      - Operations
+  /v1/ops/monitoring/dashboard:
+    get:
+      description: |
+        <p>Get aggregated dashboard statistics for all monitoring checks.</p>
+        <h4>Includes:</h4>
+        <ul>
+            <li>Total, passing, failing, and degraded check counts</li>
+            <li>Average uptime percentages (24h, 7d, 30d)</li>
+            <li>Average response time</li>
+            <li>Checks grouped by type and status</li>
+        </ul>
+      operationId: getMonitorDashboard
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed.
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonitorDashboardResponse"
+          description: Dashboard summary.
+      security:
+      - bearerAuth: []
+      summary: Get Monitoring Dashboard
+      tags:
+      - Operations
+  /v1/ops/jobs/{jobId}:
+    get:
+      description: |
+        <p>Retrieves the current status and results of an asynchronous job. Poll this endpoint to check job progress.</p>
+        <h4>Polling Recommendations:</h4>
+        <ul>
+            <li>For fast jobs (e.g., similar domains), poll every 1-2 seconds.</li>
+            <li>For slow jobs (e.g., WHOIS search, screenshots), poll every 5-10 seconds.</li>
+            <li>Implement an exponential backoff strategy for very long-running jobs.</li>
+            <li>Stop polling when the status is `COMPLETED`, `FAILED`, or `CANCELLED`.</li>
+        </ul>
+        <h4>Job Statuses:</h4>
+        <ul>
+            <li><b>PENDING:</b> Job is queued and waiting to start.</li>
+            <li><b>PROCESSING:</b> Job is actively being processed.</li>
+            <li><b>COMPLETED:</b> Job finished successfully, results are available.</li>
+            <li><b>FAILED:</b> Job failed with an error.</li>
+            <li><b>CANCELLED:</b> Job was cancelled by user or system.</li>
+        </ul>
+      operationId: getJob
+      parameters:
+      - description: "The unique ID of the job, returned from a `POST` operation."
+        example: f6250320-9ed4-442b-a389-acfda52d9375
+        explode: false
+        in: path
+        name: jobId
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Job ID not found.
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+          description: Job status and results retrieved successfully.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+      security:
+      - bearerAuth: []
+      summary: Get Asynchronous Job Status and Results
+      tags:
+      - Operations
+  /v1/ops/jobs/list:
+    get:
+      description: |
+        <p>Retrieves a list of recent jobs for the authenticated user, optionally filtered by status.</p>
+        <h4>Query Parameters:</h4>
+        <ul>
+            <li><b>status:</b> Filter by job status (PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED)</li>
+            <li><b>limit:</b> Maximum number of jobs to return (default: 50, max: 100)</li>
+            <li><b>offset:</b> Number of jobs to skip for pagination (default: 0)</li>
+        </ul>
+        <h4>Response Format:</h4>
+        <p>Returns a JSON object with a "jobs" array containing job summaries.</p>
+      operationId: listJobs
+      parameters:
+      - description: Filter by job status
+        explode: true
+        in: query
+        name: status
+        required: false
+        schema:
+          type: string
+        style: form
+      - description: Maximum number of jobs to return
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          format: int32
+          type: integer
+        style: form
+      - description: Number of jobs to skip
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          default: 0
+          format: int32
+          type: integer
+        style: form
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved job list.
+      security:
+      - bearerAuth: []
+      summary: List Recent Jobs
+      tags:
+      - Operations
+  /v1/location/stats:
+    get:
+      description: |
+        <p>Returns metadata and statistics about the geolocation database, including coverage, update frequency, and data quality metrics.</p>
+        <h4>Statistics Included:</h4>
+        <ul>
+            <li><b>Coverage:</b> Total IP addresses, networks, and ASNs covered</li>
+            <li><b>Geographic:</b> Number of countries, cities, and regions</li>
+            <li><b>Freshness:</b> Last update timestamp and update frequency</li>
+            <li><b>Data Sources:</b> Providers and data collection methods</li>
+            <li><b>Accuracy:</b> Quality metrics and confidence scores</li>
+        </ul>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Verifying database coverage for your use case</li>
+            <li>Monitoring data freshness</li>
+            <li>Understanding data quality and accuracy</li>
+        </ul>
+      operationId: getLocationStats
+      responses:
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved database statistics.
+      security:
+      - bearerAuth: []
+      summary: Get Geolocation Database Statistics
+      tags:
+      - Location
+  /v1/location/search:
+    get:
+      description: |
+        <p>Search the geolocation database by specific fields to find all IP addresses matching your criteria. Powerful for threat hunting, infrastructure discovery, and pattern analysis.</p>
+        <h4>Searchable Fields:</h4>
+        <ul>
+            <li><b>Geographic:</b> city, country, country_code, region, postal_code, continent, continent_code</li>
+            <li><b>Network:</b> asn, as_number, organization, isp, isp_name</li>
+            <li><b>Coordinates:</b> latitude, longitude</li>
+        </ul>
+        <h4>Query Examples:</h4>
+        <ul>
+            <li><b>Find all IPs in a city:</b> field=city&value=London</li>
+            <li><b>Find all IPs for an ASN:</b> field=asn&value=15169</li>
+            <li><b>Find all IPs for an ISP:</b> field=isp_name&value=Google</li>
+            <li><b>Find all IPs in country:</b> field=country_code&value=US</li>
+        </ul>
+        <h4>Performance:</h4>
+        <ul>
+            <li><b>Response Time:</b> 200-500ms depending on result size</li>
+            <li><b>Rate Limit:</b> 5 searches per minute</li>
+        </ul>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Infrastructure mapping for threat actors</li>
+            <li>Finding all IPs in a specific region for compliance</li>
+            <li>Discovering VPN/proxy exit nodes</li>
+            <li>Threat hunting by ISP or ASN</li>
+        </ul>
+      operationId: searchLocation
+      parameters:
+      - description: "The field to search. Valid fields: city, country, country_code,\
+          \ isp_name, isp, asn, as_number, organization, continent, continent_code,\
+          \ region, postal_code, latitude, longitude"
+        example: city
+        explode: true
+        in: query
+        name: field
+        required: true
+        schema:
+          type: string
+        style: form
+      - description: The value to search for in the specified field.
+        example: San Francisco
+        explode: true
+        in: query
+        name: value
+        required: true
+        schema:
+          type: string
+        style: form
+      - description: Maximum number of results to return.
+        example: 100
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          format: int32
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved search results.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid search field or parameters.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Rate limit exceeded for search operations.
+      security:
+      - bearerAuth: []
+      summary: Search Geolocation Database by Field
+      tags:
+      - Location
+  /v1/location/network/{*network}:
+    get:
+      description: |
+        <p>Returns geolocation and network information for an entire network range specified in CIDR notation. Useful for analyzing network blocks, ranges, and subnets.</p>
+        <h4>Supported Formats:</h4>
+        <ul>
+            <li><b>IPv4 CIDR:</b> 192.168.1.0/24</li>
+            <li><b>IPv6 CIDR:</b> 2001:db8::/32</li>
+        </ul>
+        <h4>Data Included:</h4>
+        <ul>
+            <li><b>Network Details:</b> CIDR range, first/last IP, total addresses</li>
+            <li><b>Geographic:</b> Country, city, region for the network block</li>
+            <li><b>Network:</b> ASN, organization, ISP information</li>
+            <li><b>Classification:</b> Network type and usage category</li>
+        </ul>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Analyzing suspicious network ranges</li>
+            <li>Bulk geolocation for network blocks</li>
+            <li>Infrastructure mapping and reconnaissance</li>
+        </ul>
+      operationId: getNetworkLocation
+      parameters:
+      - description: "The network range in CIDR notation (e.g., 192.168.1.0/24 or\
+          \ 2001:db8::/32)."
+        example: 8.8.8.0/24
+        explode: false
+        in: path
+        name: network
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid CIDR format or network specification.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Network not found in geolocation database.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved network geolocation data.
+      security:
+      - bearerAuth: []
+      summary: Get Network/CIDR Geolocation Data
+      tags:
+      - Location
+  /v1/location/ip/{ip}:
+    get:
+      description: |
+        <p>Returns comprehensive geolocation and network information for any IPv4 or IPv6 address. This is one of the fastest endpoints in the API, optimized for real-time fraud detection and access control.</p>
+        <h4>Data Included:</h4>
+        <ul>
+            <li><b>Geographic:</b> Country, city, region, postal code, coordinates, timezone</li>
+            <li><b>Network:</b> ASN, ISP/organization name, network range</li>
+            <li><b>Classification:</b> Connection type (residential, datacenter, VPN, proxy, hosting)</li>
+            <li><b>Reputation:</b> Risk indicators and abuse scores</li>
+        </ul>
+        <h4>Performance:</h4>
+        <ul>
+            <li><b>Response Time:</b> Typically &lt;150ms</li>
+            <li><b>Cache:</b> Results cached for 6 hours by default</li>
+        </ul>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Real-time fraud detection in payment flows</li>
+            <li>Geographic access control and compliance</li>
+            <li>Bot and VPN detection</li>
+            <li>Threat intelligence enrichment</li>
+        </ul>
+      operationId: getIpLocation
+      parameters:
+      - description: The IPv4 or IPv6 address to lookup.
+        example: 8.8.8.8
+        explode: false
+        in: path
+        name: ip
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: IP address not found in geolocation database.
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved geolocation data.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Rate limit exceeded.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid IP address format.
+      security:
+      - bearerAuth: []
+      summary: Get IP Geolocation and ASN Data
+      tags:
+      - Location
+  /v1/indicators/{type}/{value}:
+    get:
+      description: |
+        <p>Retrieves comprehensive intelligence for a single IP address or domain. This is the primary, high-performance endpoint for synchronous enrichment.</p>
+        <p>It aggregates data from multiple sources, including geolocation, WHOIS, DNS, reputation scoring, and relationship mapping. Use the `include` parameter to request additional, deeper data sets that may have higher latency.</p>
+        <h4>Performance:</h4>
+        <ul>
+            <li><b>Base Response:</b> Typically under 500ms.</li>
+            <li><b>With `include=routing`:</b> First request may take up to 5 seconds; subsequent requests are cached for 5 minutes and respond in &lt;200ms.</li>
+            <li><b>With `include=ip_intelligence`:</b> Adds 200-500ms of latency for each IP address resolved from the domain.</li>
+        </ul>
+      operationId: getIndicator
+      parameters:
+      - description: The type of indicator to enrich.
+        example: ip
+        explode: false
+        in: path
+        name: type
+        required: true
+        schema:
+          enum:
+          - ip
+          - domain
+          type: string
+        style: simple
+      - description: "The value of the indicator (e.g., an IPv4/IPv6 address or a\
+          \ domain name)."
+        example: 8.8.8.8
+        explode: false
+        in: path
+        name: value
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: A comma-separated list of additional data modules to include
+          in the response. Requesting more modules may increase latency.
+        example: "routing,whois"
+        explode: true
+        in: query
+        name: include
+        required: false
+        schema:
+          description: "Comma-separated values from: routing, rpki, whois, dns_details,\
+            \ ip_intelligence"
+          enum:
+          - routing
+          - rpki
+          - whois
+          - dns_details
+          - ip_intelligence
+          type: string
+        style: form
+      responses:
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: The requested indicator was not found in our datasets.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid indicator format or unsupported type.
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndicatorResponse"
+          description: Successfully retrieved intelligence data.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Rate limit exceeded.
+      security:
+      - bearerAuth: []
+      summary: Enrich a Single Indicator (IP or Domain)
+      tags:
+      - Indicators
+  /v1/indicators/{type}/{value}/history:
+    get:
+      description: |
+        <p>Retrieves time-series historical data for an IP address or domain. Track how infrastructure changes over time for threat intelligence and forensic analysis.</p>
+        <h4>History Types:</h4>
+        <ul>
+            <li><b>whois:</b> Registration history - registrant changes, expiration updates, transfers</li>
+            <li><b>routing:</b> BGP routing history - prefix announcements, ASN changes, route hijacks</li>
+            <li><b>dns:</b> DNS resolution history - IP address changes, nameserver updates</li>
+            <li><b>ssl:</b> Certificate history - cert replacements, CA changes, expiration events</li>
+            <li><b>reputation:</b> Risk score history - blacklist appearances, reputation changes</li>
+        </ul>
+        <h4>Data Format:</h4>
+        <p>Timeline with dated snapshots showing what changed and when:</p>
+        <pre><code>{
+          "history": [
+            {
+              "timestamp": "2025-01-15T10:00:00Z",
+              "field": "registrant_company",
+              "old_value": "Evil Corp",
+              "new_value": "Legitimate LLC"
+            }
+          ]
+        }</code></pre>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Tracking domain ownership changes</li>
+            <li>Investigating IP reputation degradation</li>
+            <li>Forensic timeline reconstruction</li>
+            <li>Detecting infrastructure pivots by threat actors</li>
+        </ul>
+      operationId: getIndicatorHistory
+      parameters:
+      - description: Type of indicator
+        example: domain
+        explode: false
+        in: path
+        name: type
+        required: true
+        schema:
+          enum:
+          - ip
+          - domain
+          type: string
+        style: simple
+      - description: The indicator value (IP address or domain)
+        example: example.com
+        explode: false
+        in: path
+        name: value
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Type of historical data to retrieve
+        example: whois
+        explode: true
+        in: query
+        name: historyType
+        required: false
+        schema:
+          enum:
+          - whois
+          - routing
+          - dns
+          - ssl
+          - reputation
+          type: string
+        style: form
+      responses:
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: No historical data found for this indicator.
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryResponse"
+          description: Successfully retrieved historical data.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid indicator type or history type.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+      security:
+      - bearerAuth: []
+      summary: Get Historical Data for Indicator
+      tags:
+      - Indicators
+  /v1/indicators/{type}/{value}/graph:
+    get:
+      description: |
+        <p>Returns graph visualization data showing relationships between the indicator and related infrastructure. Perfect for interactive network diagrams and threat actor infrastructure mapping.</p>
+        <h4>Relationship Types Included:</h4>
+        <ul>
+            <li><b>For Domains:</b>
+                <ul>
+                    <li>Resolves to IPs</li>
+                    <li>Shares nameservers with</li>
+                    <li>Same SSL certificate as</li>
+                    <li>Same registrant as</li>
+                    <li>Links to/from other domains</li>
+                </ul>
+            </li>
+            <li><b>For IPs:</b>
+                <ul>
+                    <li>Hosts domains</li>
+                    <li>Same ASN as</li>
+                    <li>Same network block as</li>
+                    <li>Connected via routing</li>
+                </ul>
+            </li>
+        </ul>
+        <h4>Output Format:</h4>
+        <p>Compatible with react-force-graph, vis.js, cytoscape.js:</p>
+        <pre><code>{
+          "nodes": [
+            {"id": "example.com", "type": "domain", "label": "example.com"},
+            {"id": "8.8.8.8", "type": "ip", "label": "8.8.8.8"}
+          ],
+          "links": [
+            {"source": "example.com", "target": "8.8.8.8", "type": "resolves_to"}
+          ]
+        }</code></pre>
+        <h4>Performance:</h4>
+        <ul>
+            <li>Response Time: 500ms-2s depending on graph complexity</li>
+            <li>Default: 100 nodes maximum (adjustable)</li>
+        </ul>
+        <h4>Use Cases:</h4>
+        <ul>
+            <li>Interactive threat actor infrastructure visualization</li>
+            <li>Discovering related phishing campaigns</li>
+            <li>Mapping shadow IT and sprawl</li>
+            <li>Network topology visualization</li>
+        </ul>
+      operationId: getIndicatorGraph
+      parameters:
+      - description: Type of indicator
+        example: domain
+        explode: false
+        in: path
+        name: type
+        required: true
+        schema:
+          enum:
+          - ip
+          - domain
+          type: string
+        style: simple
+      - description: The indicator value (IP address or domain)
+        example: example.com
+        explode: false
+        in: path
+        name: value
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: Maximum number of nodes to return in the graph
+        example: 100
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          format: int32
+          type: integer
+        style: form
+      responses:
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid indicator type or limit parameter.
+        "200":
+          content:
+            application/json: {}
+          description: Successfully retrieved graph data.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Indicator not found or no relationships discovered.
+      security:
+      - bearerAuth: []
+      summary: Get Infrastructure Relationship Graph
+      tags:
+      - Indicators
+  /v1/indicators/domain/{domain}/subdomains:
+    get:
+      description: "Retrieves a list of discovered subdomains for a given root domain,\
+        \ based on passive DNS and other enumeration techniques."
+      operationId: getSubdomains
+      parameters:
+      - description: The root domain to query for subdomains.
+        example: google.com
+        explode: false
+        in: path
+        name: domain
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: The maximum number of subdomains to return.
+        example: 100
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          default: 100
+          format: int32
+          type: integer
+        style: form
+      responses:
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Domain not found or no subdomains discovered.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Invalid domain format.
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: Authentication failed. Missing or invalid API key.
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubdomainResponse"
+          description: Successfully retrieved subdomains.
+      security:
+      - bearerAuth: []
+      summary: Get Domain Subdomains
+      tags:
+      - Indicators
+components:
+  schemas:
+    MonitorAssertions:
+      description: Assertions to validate check results
+      example:
+        headers:
+          key: headers
+        dnsRecordValue: 93.184.216.34
+        containsText: '"status":"ok"'
+        notContainsText: error
+        maxResponseTime: 3000
+        sslDaysUntilExpiry: 30
+        dnsRecordType: A
+        statusCode: 200
+      properties:
+        headers:
+          additionalProperties:
+            description: Expected response headers
+            type: string
+          description: Expected response headers
+          type: object
+        statusCode:
+          description: Expected HTTP status code
+          example: 200
+          format: int32
+          type: integer
+        maxResponseTime:
+          description: Maximum response time in milliseconds
+          example: 3000
+          format: int64
+          type: integer
+        containsText:
+          description: Text that must be present in response body
+          example: '"status":"ok"'
+          type: string
+        notContainsText:
+          description: Text that must NOT be present in response body
+          example: error
+          type: string
+        sslDaysUntilExpiry:
+          description: Minimum SSL certificate days until expiry (for ssl checks)
+          example: 30
+          format: int32
+          type: integer
+        dnsRecordValue:
+          description: Expected DNS record value (for dns checks)
+          example: 93.184.216.34
+          type: string
+        dnsRecordType:
+          description: DNS record type (for dns checks)
+          enum:
+          - A
+          - AAAA
+          - CNAME
+          - MX
+          - TXT
+          - NS
+          example: A
+          type: string
+      type: object
+    MonitorCheckRequest:
+      description: Request to create or update a monitoring check
+      example:
+        valid: true
+        headers:
+          key: headers
+        method: GET
+        name: My Website Health
+        locations:
+        - us-east-1
+        - eu-west-1
+        assertions:
+          headers:
+            key: headers
+          dnsRecordValue: 93.184.216.34
+          containsText: '"status":"ok"'
+          notContainsText: error
+          maxResponseTime: 3000
+          sslDaysUntilExpiry: 30
+          dnsRecordType: A
+          statusCode: 200
+        type: api
+        body: body
+        url: https://example.com/health
+        enabled: true
+        frequency: 10
+      properties:
+        name:
+          description: Name of the monitoring check
+          example: My Website Health
+          type: string
+        url:
+          description: URL to monitor
+          example: https://example.com/health
+          type: string
+        type:
+          description: "Type of check: api, ssl, or dns"
+          enum:
+          - api
+          - ssl
+          - dns
+          example: api
+          type: string
+        frequency:
+          description: Check frequency in minutes
+          example: 10
+          format: int32
+          maximum: 1440
+          minimum: 1
+          type: integer
+        locations:
+          description: Locations to run checks from
+          example:
+          - us-east-1
+          - eu-west-1
+          items:
+            description: Locations to run checks from
+            example: "[\"us-east-1\",\"eu-west-1\"]"
+            type: string
+          type: array
+        assertions:
+          $ref: "#/components/schemas/MonitorAssertions"
+        enabled:
+          description: Whether the check is enabled
+          example: true
+          type: boolean
+        method:
+          description: HTTP method for API checks
+          enum:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - HEAD
+          - OPTIONS
+          example: GET
+          type: string
+        headers:
+          additionalProperties:
+            description: Request headers for API checks
+            type: string
+          description: Request headers for API checks
+          type: object
+        body:
+          description: Request body for POST/PUT API checks
+          type: string
+        valid:
+          type: boolean
+      required:
+      - name
+      - url
+      type: object
+    ErrorResponse:
+      description: Standard error response returned when an API request fails
+      example:
+        path: /v1/indicators/ip/invalid-ip
+        trace_id: 550e8400-e29b-41d4-a716-446655440000
+        details:
+          field: ip
+          issue: Invalid format
+        error: INVALID_INDICATOR
+        message: The provided IP address is not a valid IPv4 or IPv6 address
+        status: 400
+        timestamp: 2024-12-20T10:15:30.123Z
+      properties:
+        status:
+          description: The HTTP status code of the error
+          example: 400
+          format: int32
+          type: integer
+        error:
+          description: "A short, machine-readable error code"
+          example: INVALID_INDICATOR
+          type: string
+        message:
+          description: A human-readable error message providing more detail
+          example: The provided IP address is not a valid IPv4 or IPv6 address
+          type: string
+        details:
+          description: "Additional details about the error, including field-specific\
+            \ validation errors"
+          example:
+            field: ip
+            issue: Invalid format
+          type: object
+        timestamp:
+          description: The timestamp when the error occurred
+          example: 2024-12-20T10:15:30.123Z
+          format: date-time
+          type: string
+        trace_id:
+          description: "A unique trace ID for this request, useful for debugging"
+          example: 550e8400-e29b-41d4-a716-446655440000
+          type: string
+        path:
+          description: The API path that generated this error
+          example: /v1/indicators/ip/invalid-ip
+          type: string
+      required:
+      - error
+      - message
+      - status
+      - timestamp
+      type: object
+    MonitorCheckResponse:
+      description: Monitoring check details
+      example:
+        lastRunAt: 2000-01-23T04:56:07.000+00:00
+        method: GET
+        uptime30Days: 99.92
+        responseTime: 245
+        uptime7Days: 99.87
+        type: api
+        url: https://example.com/health
+        enabled: true
+        frequency: 10
+        createdAt: 2000-01-23T04:56:07.000+00:00
+        uptime24Hours: 99.95
+        name: My Website Health
+        locations:
+        - us-east-1
+        - eu-west-1
+        id: abc123
+        assertions:
+          headers:
+            key: headers
+          dnsRecordValue: 93.184.216.34
+          containsText: '"status":"ok"'
+          notContainsText: error
+          maxResponseTime: 3000
+          sslDaysUntilExpiry: 30
+          dnsRecordType: A
+          statusCode: 200
+        muted: false
+        status: passing
+        updatedAt: 2000-01-23T04:56:07.000+00:00
+      properties:
+        id:
+          description: Unique identifier for the check
+          example: abc123
+          type: string
+        name:
+          description: Name of the monitoring check
+          example: My Website Health
+          type: string
+        url:
+          description: URL being monitored
+          example: https://example.com/health
+          type: string
+        type:
+          description: Type of check
+          enum:
+          - api
+          - ssl
+          - dns
+          example: api
+          type: string
+        status:
+          description: Current status
+          enum:
+          - passing
+          - failing
+          - degraded
+          - pending
+          example: passing
+          type: string
+        enabled:
+          description: Whether the check is enabled
+          example: true
+          type: boolean
+        frequency:
+          description: Check frequency in minutes
+          example: 10
+          format: int32
+          type: integer
+        locations:
+          description: Locations where check runs
+          example:
+          - us-east-1
+          - eu-west-1
+          items:
+            description: Locations where check runs
+            example: "[\"us-east-1\",\"eu-west-1\"]"
+            type: string
+          type: array
+        muted:
+          description: Whether the check is muted (no alerts)
+          example: false
+          type: boolean
+        method:
+          description: HTTP method used for API checks
+          example: GET
+          type: string
+        assertions:
+          $ref: "#/components/schemas/MonitorAssertions"
+        lastRunAt:
+          description: Last time the check ran
+          format: date-time
+          type: string
+        createdAt:
+          description: When the check was created
+          format: date-time
+          type: string
+        updatedAt:
+          description: When the check was last updated
+          format: date-time
+          type: string
+        uptime24Hours:
+          description: Uptime percentage over the last 24 hours
+          example: 99.95
+          format: double
+          type: number
+        uptime7Days:
+          description: Uptime percentage over the last 7 days
+          example: 99.87
+          format: double
+          type: number
+        uptime30Days:
+          description: Uptime percentage over the last 30 days
+          example: 99.92
+          format: double
+          type: number
+        responseTime:
+          description: Average response time in milliseconds
+          example: 245
+          format: int64
+          type: integer
+      type: object
+    ChangeTrackingRequest:
+      description: Request to start or update change tracking for an indicator
+      example:
+        fields:
+        - dns
+        - whois
+        - ssl
+        enabled: true
+        frequency: daily
+      properties:
+        fields:
+          description: Fields to track for changes. Valid values depend on indicator
+            type.
+          example:
+          - dns
+          - whois
+          - ssl
+          items:
+            description: Fields to track for changes. Valid values depend on indicator
+              type.
+            example: "[\"dns\",\"whois\",\"ssl\"]"
+            type: string
+          type: array
+        frequency:
+          description: How often to check for changes
+          enum:
+          - hourly
+          - daily
+          - weekly
+          example: daily
+          type: string
+        enabled:
+          description: Whether tracking is enabled
+          example: true
+          type: boolean
+      type: object
+    JobResponse:
+      description: Response returned when an asynchronous job is created. Contains
+        the job ID and status URL for polling.
+      example:
+        jobId: 550e8400-e29b-41d4-a716-446655440000
+        status: PENDING
+        statusUrl: /v1/ops/jobs/550e8400-e29b-41d4-a716-446655440000
+        message: Job accepted for processing
+      properties:
+        jobId:
+          description: Unique identifier for the job. Use this ID to poll for job
+            status and results.
+          example: 550e8400-e29b-41d4-a716-446655440000
+          type: string
+        status:
+          description: Current status of the job
+          enum:
+          - PENDING
+          - RUNNING
+          - COMPLETED
+          - FAILED
+          - CANCELLED
+          example: PENDING
+          type: string
+        statusUrl:
+          description: "URL endpoint to poll for job status and results. Typically\
+            \ `/v1/ops/jobs/{jobId}`."
+          example: /v1/ops/jobs/550e8400-e29b-41d4-a716-446655440000
+          type: string
+        message:
+          description: Human-readable message describing the job acceptance or current
+            state
+          example: Job accepted for processing
+          type: string
+      required:
+      - jobId
+      - status
+      - statusUrl
+      type: object
+    JsonNode:
+      type: object
+    ScheduleConfig:
+      description: Configuration for scheduling recurring screenshot captures
+      example:
+        cron: 0 0 * * * *
+        retention_count: 30
+        timezone: UTC
+        enabled: true
+        frequency: hourly
+      properties:
+        cron:
+          description: Cron expression for scheduling
+          example: 0 0 * * * *
+          pattern: Cron expression
+          type: string
+        frequency:
+          description: Frequency of captures
+          enum:
+          - hourly
+          - daily
+          - weekly
+          - monthly
+          example: hourly
+          type: string
+        timezone:
+          default: UTC
+          description: Timezone for scheduled captures
+          example: UTC
+          type: string
+        retention_count:
+          default: 30
+          description: Maximum number of captures to retain
+          example: 30
+          format: int32
+          maximum: 1000
+          minimum: 1
+          type: integer
+        enabled:
+          default: true
+          description: Enable/disable the schedule
+          example: true
+          type: boolean
+      type: object
+    ScreenshotOptions:
+      description: Configuration options for screenshot capture
+      example:
+        wait_time: 2000
+        full_page: false
+        width: 1920
+        format: png
+        block_ads: true
+        user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+        javascript: true
+        height: 1080
+        quality: 90
+        accept_cookies: true
+      properties:
+        width:
+          default: 1920
+          description: Viewport width in pixels
+          example: 1920
+          format: int32
+          maximum: 7680
+          minimum: 320
+          type: integer
+        height:
+          default: 1080
+          description: Viewport height in pixels
+          example: 1080
+          format: int32
+          maximum: 4320
+          minimum: 240
+          type: integer
+        full_page:
+          default: false
+          description: Capture the full page height (scrolling screenshot)
+          example: false
+          type: boolean
+        wait_time:
+          default: 2000
+          description: Wait time in milliseconds before taking screenshot
+          example: 2000
+          format: int32
+          maximum: 30000
+          minimum: 0
+          type: integer
+        format:
+          default: png
+          description: Image format for the screenshot
+          enum:
+          - png
+          - jpeg
+          - webp
+          example: png
+          pattern: ^(png|jpeg|webp)$
+          type: string
+        quality:
+          default: 90
+          description: "Image quality (1-100, only for jpeg/webp)"
+          example: 90
+          format: int32
+          maximum: 100
+          minimum: 1
+          type: integer
+        user_agent:
+          description: User agent string to use for the request
+          example: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+          type: string
+        javascript:
+          default: true
+          description: Enable JavaScript execution
+          example: true
+          type: boolean
+        block_ads:
+          default: false
+          description: Block ads and trackers
+          example: true
+          type: boolean
+        accept_cookies:
+          default: true
+          description: Accept cookies consent if prompted
+          example: true
+          type: boolean
+      type: object
+    ScreenshotRequest:
+      description: Request parameters for capturing a website screenshot
+      example:
+        schedule:
+          cron: 0 0 * * * *
+          retention_count: 30
+          timezone: UTC
+          enabled: true
+          frequency: hourly
+        options:
+          wait_time: 2000
+          full_page: false
+          width: 1920
+          format: png
+          block_ads: true
+          user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+          javascript: true
+          height: 1080
+          quality: 90
+          accept_cookies: true
+        url: https://example.com
+      properties:
+        url:
+          description: The URL of the website to capture
+          example: https://example.com
+          pattern: ^https?://.*
+          type: string
+        options:
+          $ref: "#/components/schemas/ScreenshotOptions"
+        schedule:
+          $ref: "#/components/schemas/ScheduleConfig"
+      required:
+      - url
+      type: object
+    InfrastructureMapRequest:
+      description: Configuration for mapping infrastructure relationships and discovering
+        connected assets
+      example:
+        depth: 2
+        startPoint: example.com
+      properties:
+        startPoint:
+          description: Starting point for infrastructure mapping (domain or IP address)
+          example: example.com
+          type: string
+        depth:
+          default: 1
+          description: "Depth of relationship mapping (number of hops from starting\
+            \ point). Depth 1: Direct relationships (~30s, 10-50 assets), Depth 2:\
+            \ 2 hops (~2-5 min, 50-500 assets), Depth 3: 3 hops (~10-30 min, 500-5000\
+            \ assets)"
+          example: 2
+          format: int32
+          maximum: 3
+          minimum: 1
+          type: integer
+      required:
+      - startPoint
+      type: object
+    ScanRequest:
+      description: Request for initiating a domain infrastructure scan
+      example:
+        domain: example.com
+        type: comprehensive
+      properties:
+        domain:
+          description: The target domain to scan
+          example: example.com
+          type: string
+        type:
+          default: comprehensive
+          description: Type of scan to perform. Determines the depth and modules used
+            in the scan.
+          enum:
+          - comprehensive
+          - subdomains
+          - ports
+          - technologies
+          - vulnerabilities
+          - ssl
+          - dns
+          - whois
+          example: comprehensive
+          pattern: ^(comprehensive|subdomains|ports|technologies|vulnerabilities|ssl|dns|whois)$
+          type: string
+      required:
+      - domain
+      type: object
+    MonitoringAlertRequest:
+      description: Configuration for creating monitoring alert rules with notification
+        channels
+      example:
+        slack_webhook: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
+        channels:
+        - email
+        - slack
+        webhook_url: https://api.example.com/webhook/alerts
+        threshold_days: 14
+        pagerduty_key: R03XXXXXXXXXXXXXXXXXXXXXX
+        type: ssl_expiring
+        email: alerts@example.com
+      properties:
+        type:
+          description: Type of alert condition to monitor
+          enum:
+          - downtime
+          - dns_change
+          - whois_change
+          - ssl_expiring
+          - content_change
+          - technology_change
+          example: ssl_expiring
+          pattern: ^(downtime|dns_change|whois_change|ssl_expiring|content_change|technology_change)$
+          type: string
+        threshold_days:
+          description: Threshold in days (for ssl_expiring alerts). Alert triggers
+            when SSL cert expires within this many days.
+          example: 14
+          format: int32
+          minimum: 1
+          type: integer
+        channels:
+          description: Notification channels to use for alerts
+          example:
+          - email
+          - slack
+          items:
+            description: Notification channels to use for alerts
+            example: "[\"email\",\"slack\"]"
+            type: string
+          type: array
+          uniqueItems: true
+        email:
+          description: Email address for alert notifications
+          example: alerts@example.com
+          type: string
+        slack_webhook:
+          description: Slack webhook URL for notifications
+          example: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
+          type: string
+        webhook_url:
+          description: Custom webhook URL for notifications (will receive POST with
+            alert data)
+          example: https://api.example.com/webhook/alerts
+          type: string
+        pagerduty_key:
+          description: PagerDuty integration key for incident creation
+          example: R03XXXXXXXXXXXXXXXXXXXXXX
+          type: string
+      required:
+      - type
+      type: object
+    BitsquattingConfig:
+      description: Configuration for bitsquatting (bit-flip) variations
+      example:
+        max_bit_flips: 1
+      properties:
+        max_bit_flips:
+          default: 1
+          description: Maximum bit flips per character
+          example: 1
+          format: int32
+          maximum: 2
+          minimum: 1
+          type: integer
+      type: object
+    HomoglyphConfig:
+      description: Configuration for homoglyph (look-alike character) variations
+      example:
+        greek: true
+        max_substitutions: 2
+        latin: true
+        cyrillic: true
+      properties:
+        cyrillic:
+          default: true
+          description: Include Cyrillic character substitutions
+          example: true
+          type: boolean
+        greek:
+          default: true
+          description: Include Greek character substitutions
+          example: true
+          type: boolean
+        latin:
+          default: true
+          description: Include Latin character substitutions
+          example: true
+          type: boolean
+        max_substitutions:
+          default: 2
+          description: Maximum number of character substitutions per domain
+          example: 2
+          format: int32
+          maximum: 5
+          minimum: 1
+          type: integer
+      type: object
+    SimilarDomainRequest:
+      description: Configuration for generating similar domain variations for brand
+        protection and threat hunting
+      example:
+        technique_config:
+          typosquatting:
+            character_swap: true
+            double_character: true
+            character_omission: true
+            keyboard_proximity: true
+          tld_variation:
+            custom_tlds:
+            - io
+            - ai
+            - tech
+            common_tlds: true
+            new_gtlds: true
+            country_tlds: true
+          bitsquatting:
+            max_bit_flips: 1
+          homoglyph:
+            greek: true
+            max_substitutions: 2
+            latin: true
+            cyrillic: true
+        techniques:
+        - typosquatting
+        - homoglyph
+        - bitsquatting
+        limit: 100
+        check_registration: true
+        include_dns: true
+        include_risk_score: true
+      properties:
+        techniques:
+          description: Types of domain variations to generate
+          example:
+          - typosquatting
+          - homoglyph
+          - bitsquatting
+          items:
+            description: Types of domain variations to generate
+            example: "[\"typosquatting\",\"homoglyph\",\"bitsquatting\"]"
+            type: string
+          type: array
+          uniqueItems: true
+        limit:
+          default: 100
+          description: Maximum number of similar domains to generate
+          example: 100
+          format: int32
+          maximum: 1000
+          minimum: 1
+          type: integer
+        check_registration:
+          default: false
+          description: Check if generated domains are registered
+          example: true
+          type: boolean
+        include_dns:
+          default: false
+          description: Include DNS resolution data for registered domains
+          example: true
+          type: boolean
+        include_risk_score:
+          default: true
+          description: Calculate risk scores for each variation
+          example: true
+          type: boolean
+        technique_config:
+          $ref: "#/components/schemas/TechniqueConfig"
+      type: object
+    SimilarDomainsOpsRequest:
+      description: Request for generating similar/lookalike domains for brand protection
+      example:
+        domain: example.com
+        options:
+          technique_config:
+            typosquatting:
+              character_swap: true
+              double_character: true
+              character_omission: true
+              keyboard_proximity: true
+            tld_variation:
+              custom_tlds:
+              - io
+              - ai
+              - tech
+              common_tlds: true
+              new_gtlds: true
+              country_tlds: true
+            bitsquatting:
+              max_bit_flips: 1
+            homoglyph:
+              greek: true
+              max_substitutions: 2
+              latin: true
+              cyrillic: true
+          techniques:
+          - typosquatting
+          - homoglyph
+          - bitsquatting
+          limit: 100
+          check_registration: true
+          include_dns: true
+          include_risk_score: true
+      properties:
+        domain:
+          description: The target domain to generate variations for
+          example: example.com
+          type: string
+        options:
+          $ref: "#/components/schemas/SimilarDomainRequest"
+      required:
+      - domain
+      type: object
+    TechniqueConfig:
+      description: Detailed configuration for each domain variation technique
+      example:
+        typosquatting:
+          character_swap: true
+          double_character: true
+          character_omission: true
+          keyboard_proximity: true
+        tld_variation:
+          custom_tlds:
+          - io
+          - ai
+          - tech
+          common_tlds: true
+          new_gtlds: true
+          country_tlds: true
+        bitsquatting:
+          max_bit_flips: 1
+        homoglyph:
+          greek: true
+          max_substitutions: 2
+          latin: true
+          cyrillic: true
+      properties:
+        typosquatting:
+          $ref: "#/components/schemas/TyposquattingConfig"
+        homoglyph:
+          $ref: "#/components/schemas/HomoglyphConfig"
+        bitsquatting:
+          $ref: "#/components/schemas/BitsquattingConfig"
+        tld_variation:
+          $ref: "#/components/schemas/TldVariationConfig"
+      type: object
+    TldVariationConfig:
+      description: Configuration for top-level domain variations
+      example:
+        custom_tlds:
+        - io
+        - ai
+        - tech
+        common_tlds: true
+        new_gtlds: true
+        country_tlds: true
+      properties:
+        common_tlds:
+          default: true
+          description: "Include common TLD variations (.com, .net, .org, etc.)"
+          example: true
+          type: boolean
+        country_tlds:
+          default: false
+          description: Include country-code TLDs
+          example: true
+          type: boolean
+        new_gtlds:
+          default: true
+          description: "Include new generic TLDs (.app, .dev, .cloud, etc.)"
+          example: true
+          type: boolean
+        custom_tlds:
+          description: Custom TLDs to check
+          example:
+          - io
+          - ai
+          - tech
+          items:
+            description: Custom TLDs to check
+            example: "[\"io\",\"ai\",\"tech\"]"
+            type: string
+          type: array
+          uniqueItems: true
+      type: object
+    TyposquattingConfig:
+      description: Configuration for typosquatting variations
+      example:
+        character_swap: true
+        double_character: true
+        character_omission: true
+        keyboard_proximity: true
+      properties:
+        character_omission:
+          default: true
+          description: Include character omission variations
+          example: true
+          type: boolean
+        character_swap:
+          default: true
+          description: Include character swap variations
+          example: true
+          type: boolean
+        double_character:
+          default: true
+          description: Include double character variations
+          example: true
+          type: boolean
+        keyboard_proximity:
+          default: true
+          description: Include keyboard proximity variations
+          example: true
+          type: boolean
+      type: object
+    SearchRequest:
+      description: Search query for finding indicators matching specific criteria.
+        Powerful for threat hunting and infrastructure discovery.
+      example:
+        field: registrantCompany
+        offset: 0
+        query: registrantCompany:Google AND country_code:US
+        limit: 100
+        filters:
+          risk_score_min: "5.0"
+          status: active
+        sort_by: registration_date
+        sort_order: desc
+      properties:
+        query:
+          description: |
+            Search query using field:value syntax. Supports multiple fields combined with logical operators.
+
+            **Supported Fields:**
+            - WHOIS: `registrantCompany`, `registrantName`, `registrantEmail`, `registrar`
+            - Network: `asn`, `network`, `country_code`, `city`
+            - Domain: `tld`, `domain_length`, `creation_date`
+
+            **Examples:**
+            - `registrantCompany:EvilCorp` - Find domains by registrant
+            - `asn:15169 AND country_code:US` - Complex query with AND
+            - `registrantEmail:admin@example.com` - Find domains by email
+          example: registrantCompany:Google AND country_code:US
+          type: string
+        field:
+          description: "Specific field to search in. If provided, the query is interpreted\
+            \ as a value for this field."
+          example: registrantCompany
+          type: string
+        filters:
+          additionalProperties:
+            description: Additional filters to narrow down search results. Applied
+              after query matching.
+            example: "{\"risk_score_min\":\"5.0\",\"status\":\"active\"}"
+            type: string
+          description: Additional filters to narrow down search results. Applied after
+            query matching.
+          example:
+            risk_score_min: "5.0"
+            status: active
+          type: object
+        limit:
+          default: 100
+          description: Maximum number of results to return per page
+          example: 100
+          format: int32
+          maximum: 1000
+          minimum: 1
+          type: integer
+        offset:
+          default: 0
+          description: Number of results to skip for pagination. Use with limit for
+            paginated results.
+          example: 0
+          format: int32
+          minimum: 0
+          type: integer
+        sort_by:
+          description: Field to sort results by
+          enum:
+          - registration_date
+          - expiration_date
+          - risk_score
+          - domain_name
+          - asn
+          example: registration_date
+          type: string
+        sort_order:
+          default: asc
+          description: Sort order
+          enum:
+          - asc
+          - desc
+          example: desc
+          type: string
+      required:
+      - query
+      type: object
+    BulkOptions:
+      description: Advanced configuration options for bulk processing behavior
+      example:
+        parallel_processing: true
+        batch_size: 10
+        timeout_per_indicator: 5000
+        include_failed: false
+        continue_on_error: true
+      properties:
+        parallel_processing:
+          default: true
+          description: Enable parallel processing of indicators for faster results
+          example: true
+          type: boolean
+        batch_size:
+          default: 10
+          description: Number of indicators to process in each batch. Smaller batches
+            = more frequent progress updates
+          example: 10
+          format: int32
+          maximum: 50
+          minimum: 1
+          type: integer
+        timeout_per_indicator:
+          default: 5000
+          description: Maximum time in milliseconds to wait for each indicator before
+            timing out
+          example: 5000
+          format: int32
+          maximum: 30000
+          minimum: 1000
+          type: integer
+        continue_on_error:
+          default: true
+          description: Continue processing remaining indicators if one fails. Recommended
+            for large batches.
+          example: true
+          type: boolean
+        include_failed:
+          default: false
+          description: Include failed indicators in the response with error details
+          example: false
+          type: boolean
+      type: object
+    BulkRequest:
+      description: Request payload for bulk enrichment of multiple IP addresses and
+        domains
+      example:
+        include:
+        - routing
+        - whois
+        - dns_details
+        options:
+          parallel_processing: true
+          batch_size: 10
+          timeout_per_indicator: 5000
+          include_failed: false
+          continue_on_error: true
+        indicators:
+        - 8.8.8.8
+        - google.com
+        - 1.1.1.1
+        - cloudflare.com
+      properties:
+        indicators:
+          description: List of indicators (IP addresses or domains) to enrich. Mix
+            of IPs and domains is supported.
+          example:
+          - 8.8.8.8
+          - google.com
+          - 1.1.1.1
+          - cloudflare.com
+          items:
+            description: List of indicators (IP addresses or domains) to enrich. Mix
+              of IPs and domains is supported.
+            example: "[\"8.8.8.8\",\"google.com\",\"1.1.1.1\",\"cloudflare.com\"]"
+            maxLength: 100
+            minLength: 1
+            type: string
+          maxLength: 100
+          minLength: 1
+          type: array
+        include:
+          description: Additional data modules to include for each indicator. Same
+            options as single indicator endpoint.
+          example:
+          - routing
+          - whois
+          - dns_details
+          items:
+            description: Include option
+            enum:
+            - routing
+            - rpki
+            - whois
+            - dns_details
+            - ip_intelligence
+            type: string
+          type: array
+          uniqueItems: true
+        options:
+          $ref: "#/components/schemas/BulkOptions"
+      required:
+      - indicators
+      type: object
+    TrackingConfig:
+      description: Change tracking configuration for an indicator
+      example:
+        createdAt: 2000-01-23T04:56:07.000+00:00
+        lastCheck: 2000-01-23T04:56:07.000+00:00
+        nextCheck: 2000-01-23T04:56:07.000+00:00
+        fields:
+        - fields
+        - fields
+        type: type
+        value: value
+        enabled: true
+        frequency: frequency
+        username: username
+      properties:
+        enabled:
+          description: Whether tracking is currently enabled
+          type: boolean
+        fields:
+          description: Fields being tracked for changes
+          items:
+            description: Fields being tracked for changes
+            type: string
+          type: array
+        frequency:
+          description: "Check frequency: hourly, daily, or weekly"
+          type: string
+        createdAt:
+          description: When tracking was first started
+          format: date-time
+          type: string
+        lastCheck:
+          description: When the last check was performed
+          format: date-time
+          type: string
+        nextCheck:
+          description: When the next check is scheduled
+          format: date-time
+          type: string
+        username:
+          description: Username of the owner
+          type: string
+        type:
+          description: "Indicator type: ip or domain"
+          type: string
+        value:
+          description: Indicator value
+          type: string
+      type: object
+    ChangeEvent:
+      description: A single detected change event
+      example:
+        severity: severity
+        newValue: "{}"
+        field: field
+        oldValue: "{}"
+        category: category
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        timestamp:
+          description: When the change was detected
+          format: date-time
+          type: string
+        field:
+          description: "Field that changed (dot notation, e.g., 'dns.a_record')"
+          type: string
+        oldValue:
+          type: object
+        newValue:
+          type: object
+        category:
+          description: "Category of the change (dns, whois, ssl, etc.)"
+          type: string
+        severity:
+          description: "Severity of the change: low, medium, high"
+          type: string
+      type: object
+    ChangeTrackingResponse:
+      description: Change tracking response with configuration and detected changes
+      example:
+        indicator: indicator
+        baselineCapturedAt: 2000-01-23T04:56:07.000+00:00
+        success: true
+        changes:
+        - severity: severity
+          newValue: "{}"
+          field: field
+          oldValue: "{}"
+          category: category
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        - severity: severity
+          newValue: "{}"
+          field: field
+          oldValue: "{}"
+          category: category
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        baseline: "{}"
+        type: type
+        error: error
+        tracking:
+          createdAt: 2000-01-23T04:56:07.000+00:00
+          lastCheck: 2000-01-23T04:56:07.000+00:00
+          nextCheck: 2000-01-23T04:56:07.000+00:00
+          fields:
+          - fields
+          - fields
+          type: type
+          value: value
+          enabled: true
+          frequency: frequency
+          username: username
+        totalChanges: 0
+      properties:
+        indicator:
+          description: The indicator value (IP or domain)
+          type: string
+        type:
+          description: "Indicator type: ip or domain"
+          type: string
+        tracking:
+          $ref: "#/components/schemas/TrackingConfig"
+        changes:
+          description: List of detected changes
+          items:
+            $ref: "#/components/schemas/ChangeEvent"
+          type: array
+        baseline:
+          type: object
+        baselineCapturedAt:
+          description: When the baseline was captured
+          format: date-time
+          type: string
+        totalChanges:
+          description: Total number of changes detected
+          format: int32
+          type: integer
+        error:
+          description: Error message if operation failed
+          type: string
+        success:
+          description: Whether the operation was successful
+          type: boolean
+      type: object
+    MonitorListResponse:
+      description: List of monitoring checks with summary
+      example:
+        total: 10
+        checks:
+        - lastRunAt: 2000-01-23T04:56:07.000+00:00
+          method: GET
+          uptime30Days: 99.92
+          responseTime: 245
+          uptime7Days: 99.87
+          type: api
+          url: https://example.com/health
+          enabled: true
+          frequency: 10
+          createdAt: 2000-01-23T04:56:07.000+00:00
+          uptime24Hours: 99.95
+          name: My Website Health
+          locations:
+          - us-east-1
+          - eu-west-1
+          id: abc123
+          assertions:
+            headers:
+              key: headers
+            dnsRecordValue: 93.184.216.34
+            containsText: '"status":"ok"'
+            notContainsText: error
+            maxResponseTime: 3000
+            sslDaysUntilExpiry: 30
+            dnsRecordType: A
+            statusCode: 200
+          muted: false
+          status: passing
+          updatedAt: 2000-01-23T04:56:07.000+00:00
+        - lastRunAt: 2000-01-23T04:56:07.000+00:00
+          method: GET
+          uptime30Days: 99.92
+          responseTime: 245
+          uptime7Days: 99.87
+          type: api
+          url: https://example.com/health
+          enabled: true
+          frequency: 10
+          createdAt: 2000-01-23T04:56:07.000+00:00
+          uptime24Hours: 99.95
+          name: My Website Health
+          locations:
+          - us-east-1
+          - eu-west-1
+          id: abc123
+          assertions:
+            headers:
+              key: headers
+            dnsRecordValue: 93.184.216.34
+            containsText: '"status":"ok"'
+            notContainsText: error
+            maxResponseTime: 3000
+            sslDaysUntilExpiry: 30
+            dnsRecordType: A
+            statusCode: 200
+          muted: false
+          status: passing
+          updatedAt: 2000-01-23T04:56:07.000+00:00
+        pending: 0
+        failing: 1
+        passing: 8
+        degraded: 1
+      properties:
+        checks:
+          description: List of monitoring checks
+          items:
+            $ref: "#/components/schemas/MonitorCheckResponse"
+          type: array
+        total:
+          description: Total number of checks
+          example: 10
+          format: int32
+          type: integer
+        passing:
+          description: Number of passing checks
+          example: 8
+          format: int32
+          type: integer
+        failing:
+          description: Number of failing checks
+          example: 1
+          format: int32
+          type: integer
+        degraded:
+          description: Number of degraded checks
+          example: 1
+          format: int32
+          type: integer
+        pending:
+          description: Number of pending checks (not yet run)
+          example: 0
+          format: int32
+          type: integer
+      type: object
+    MonitorDashboardResponse:
+      description: Monitoring dashboard summary
+      example:
+        failingChecks: 1
+        degradedChecks: 1
+        lastUpdated: 2000-01-23T04:56:07.000+00:00
+        passingChecks: 8
+        totalChecks: 10
+        avgUptime30Days: 99.92
+        avgUptime24Hours: 99.95
+        avgResponseTime: 312
+        avgUptime7Days: 99.87
+        checksByType:
+          api: 8
+          ssl: 1
+          dns: 1
+        checksByStatus:
+          passing: 8
+          failing: 1
+          degraded: 1
+        overallStatus: passing
+      properties:
+        totalChecks:
+          description: Total number of checks
+          example: 10
+          format: int32
+          type: integer
+        passingChecks:
+          description: Number of passing checks
+          example: 8
+          format: int32
+          type: integer
+        failingChecks:
+          description: Number of failing checks
+          example: 1
+          format: int32
+          type: integer
+        degradedChecks:
+          description: Number of degraded checks
+          example: 1
+          format: int32
+          type: integer
+        overallStatus:
+          description: Overall status
+          enum:
+          - passing
+          - failing
+          - degraded
+          example: passing
+          type: string
+        avgUptime24Hours:
+          description: Average uptime percentage over the last 24 hours
+          example: 99.95
+          format: double
+          type: number
+        avgUptime7Days:
+          description: Average uptime percentage over the last 7 days
+          example: 99.87
+          format: double
+          type: number
+        avgUptime30Days:
+          description: Average uptime percentage over the last 30 days
+          example: 99.92
+          format: double
+          type: number
+        avgResponseTime:
+          description: Average response time across all checks in milliseconds
+          example: 312
+          format: int64
+          type: integer
+        checksByType:
+          additionalProperties:
+            description: Count of checks by type
+            format: int32
+            type: integer
+          description: Count of checks by type
+          example:
+            api: 8
+            ssl: 1
+            dns: 1
+          type: object
+        checksByStatus:
+          additionalProperties:
+            description: Count of checks by status
+            format: int32
+            type: integer
+          description: Count of checks by status
+          example:
+            passing: 8
+            failing: 1
+            degraded: 1
+          type: object
+        lastUpdated:
+          description: When this dashboard data was last updated
+          format: date-time
+          type: string
+      type: object
+    Job:
+      example:
+        result: "{}"
+        createdAt: 2000-01-23T04:56:07.000+00:00
+        completedAt: 2000-01-23T04:56:07.000+00:00
+        metadata:
+          key: metadata
+        progress:
+          current: 0
+          total: 6
+          percentage: 1.4658129805029452
+          message: message
+        id: id
+        type: type
+        params: "{}"
+        error:
+          code: code
+          details: details
+          message: message
+          timestamp: 2000-01-23T04:56:07.000+00:00
+        status: PENDING
+        updatedAt: 2000-01-23T04:56:07.000+00:00
+        username: username
+      properties:
+        id:
+          type: string
+        status:
+          enum:
+          - PENDING
+          - PROCESSING
+          - COMPLETED
+          - FAILED
+          type: string
+        type:
+          type: string
+        params:
+          type: object
+        result:
+          type: object
+        error:
+          $ref: "#/components/schemas/JobError"
+        progress:
+          $ref: "#/components/schemas/JobProgress"
+        createdAt:
+          format: date-time
+          type: string
+        updatedAt:
+          format: date-time
+          type: string
+        completedAt:
+          format: date-time
+          type: string
+        metadata:
+          additionalProperties:
+            type: string
+          type: object
+        username:
+          type: string
+      type: object
+    JobError:
+      example:
+        code: code
+        details: details
+        message: message
+        timestamp: 2000-01-23T04:56:07.000+00:00
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: string
+        timestamp:
+          format: date-time
+          type: string
+      type: object
+    JobProgress:
+      example:
+        current: 0
+        total: 6
+        percentage: 1.4658129805029452
+        message: message
+      properties:
+        current:
+          format: int32
+          type: integer
+        total:
+          format: int32
+          type: integer
+        message:
+          type: string
+        percentage:
+          format: double
+          type: number
+      type: object
+    BlacklistScores:
+      description: Blacklist scores at different network levels
+      example:
+        prefix_score: 1.2
+        asn_score: 0.8
+        ip_score: 0.5
+      properties:
+        ip_score:
+          description: IP-level blacklist score
+          example: 0.5
+          format: double
+          maximum: 10
+          minimum: 0
+          type: number
+        prefix_score:
+          description: Network prefix blacklist score
+          example: 1.2
+          format: double
+          maximum: 10
+          minimum: 0
+          type: number
+        asn_score:
+          description: ASN-level blacklist score
+          example: 0.8
+          format: double
+          maximum: 10
+          minimum: 0
+          type: number
+      type: object
+    DnsInfo:
+      description: DNS records and resolution data for the domain
+      example:
+        a_records:
+        - 8.8.8.8
+        - 8.8.4.4
+        mx_records:
+        - null
+        - null
+        aaaa_records:
+        - 2001:4860:4860::8888
+        txt_records:
+        - txt_records
+        - txt_records
+        cname_records:
+        - cname_records
+        - cname_records
+        arecords:
+        - arecords
+        - arecords
+        ns_records:
+        - ns1.google.com
+        - ns2.google.com
+      properties:
+        arecords:
+          items:
+            type: string
+          type: array
+        a_records:
+          description: A records (IPv4 addresses)
+          example:
+          - 8.8.8.8
+          - 8.8.4.4
+          items:
+            description: A records (IPv4 addresses)
+            example: "[\"8.8.8.8\",\"8.8.4.4\"]"
+            type: string
+          type: array
+        aaaa_records:
+          description: AAAA records (IPv6 addresses)
+          example:
+          - 2001:4860:4860::8888
+          items:
+            description: AAAA records (IPv6 addresses)
+            example: "[\"2001:4860:4860::8888\"]"
+            type: string
+          type: array
+        mx_records:
+          description: MX records (mail servers) with priority and hostname
+          items:
+            $ref: "#/components/schemas/JsonNode"
+          type: array
+        ns_records:
+          description: NS records (name servers)
+          example:
+          - ns1.google.com
+          - ns2.google.com
+          items:
+            description: NS records (name servers)
+            example: "[\"ns1.google.com\",\"ns2.google.com\"]"
+            type: string
+          type: array
+        txt_records:
+          description: "TXT records (text records for SPF, DKIM, etc.)"
+          items:
+            description: "TXT records (text records for SPF, DKIM, etc.)"
+            type: string
+          type: array
+        cname_records:
+          description: CNAME records (canonical name aliases)
+          items:
+            description: CNAME records (canonical name aliases)
+            type: string
+          type: array
+      type: object
+    DomainReputationDetails:
+      description: Detailed infrastructure and individual IP scores
+      example:
+        domain_ip_scores:
+          key: 6.027456183070403
+        domain_ips:
+        - 8.8.8.8
+        nameserver_ips:
+        - 1.1.1.1
+        - 1.0.0.1
+        nameserver_domains:
+        - ns1.example.com
+        - ns2.example.com
+        nameserver_ip_scores:
+          key: 1.4658129805029452
+        mailserver_domains:
+        - mail.example.com
+        mailserver_ips:
+        - 74.125.28.27
+        mailserver_ip_scores:
+          key: 5.962133916683182
+      properties:
+        domain_ips:
+          description: Domain's A record IP addresses
+          example:
+          - 8.8.8.8
+          items:
+            description: Domain's A record IP addresses
+            example: "[\"8.8.8.8\"]"
+            type: string
+          type: array
+        domain_ip_scores:
+          additionalProperties:
+            description: Individual scores for each domain IP
+            format: double
+            type: number
+          description: Individual scores for each domain IP
+          type: object
+        nameserver_domains:
+          description: Nameserver domain names
+          example:
+          - ns1.example.com
+          - ns2.example.com
+          items:
+            description: Nameserver domain names
+            example: "[\"ns1.example.com\",\"ns2.example.com\"]"
+            type: string
+          type: array
+        nameserver_ips:
+          description: IP addresses of nameservers
+          example:
+          - 1.1.1.1
+          - 1.0.0.1
+          items:
+            description: IP addresses of nameservers
+            example: "[\"1.1.1.1\",\"1.0.0.1\"]"
+            type: string
+          type: array
+        nameserver_ip_scores:
+          additionalProperties:
+            description: Individual scores for each nameserver IP
+            format: double
+            type: number
+          description: Individual scores for each nameserver IP
+          type: object
+        mailserver_domains:
+          description: Mail server domain names
+          example:
+          - mail.example.com
+          items:
+            description: Mail server domain names
+            example: "[\"mail.example.com\"]"
+            type: string
+          type: array
+        mailserver_ips:
+          description: IP addresses of mail servers
+          example:
+          - 74.125.28.27
+          items:
+            description: IP addresses of mail servers
+            example: "[\"74.125.28.27\"]"
+            type: string
+          type: array
+        mailserver_ip_scores:
+          additionalProperties:
+            description: Individual scores for each mail server IP
+            format: double
+            type: number
+          description: Individual scores for each mail server IP
+          type: object
+      type: object
+    DomainReputationScores:
+      description: Domain reputation calculated from infrastructure IP scores
+      example:
+        scoring_method: composite_infrastructure
+        risk_level: medium_risk
+        mailserver_ip_score: 32.1
+        nameserver_ip_score: 45.2
+        domain_ip_score: 85.5
+        details:
+          domain_ip_scores:
+            key: 6.027456183070403
+          domain_ips:
+          - 8.8.8.8
+          nameserver_ips:
+          - 1.1.1.1
+          - 1.0.0.1
+          nameserver_domains:
+          - ns1.example.com
+          - ns2.example.com
+          nameserver_ip_scores:
+            key: 1.4658129805029452
+          mailserver_domains:
+          - mail.example.com
+          mailserver_ips:
+          - 74.125.28.27
+          mailserver_ip_scores:
+            key: 5.962133916683182
+        weights:
+          key: 5.637376656633329
+        overall_score: 51.3
+      properties:
+        overall_score:
+          description: "Overall reputation score (0-100, higher = more suspicious)"
+          example: 51.3
+          format: double
+          maximum: 100
+          minimum: 0
+          type: number
+        risk_level:
+          description: Risk classification based on overall score
+          enum:
+          - clean
+          - low_risk
+          - medium_risk
+          - high_risk
+          - malicious
+          example: medium_risk
+          type: string
+        domain_ip_score:
+          description: Average IP reputation score for domain's A records
+          example: 85.5
+          format: double
+          maximum: 100
+          minimum: 0
+          type: number
+        nameserver_ip_score:
+          description: Average IP reputation score for nameserver IPs
+          example: 45.2
+          format: double
+          maximum: 100
+          minimum: 0
+          type: number
+        mailserver_ip_score:
+          description: Average IP reputation score for mail server IPs
+          example: 32.1
+          format: double
+          maximum: 100
+          minimum: 0
+          type: number
+        details:
+          $ref: "#/components/schemas/DomainReputationDetails"
+        scoring_method:
+          description: Scoring methodology used
+          example: composite_infrastructure
+          type: string
+        weights:
+          additionalProperties:
+            description: Weighting strategy applied to infrastructure components
+            format: double
+            type: number
+          description: Weighting strategy applied to infrastructure components
+          type: object
+      type: object
+    IndicatorResponse:
+      description: Comprehensive intelligence response for an IP address or domain
+        indicator
+      example:
+        summary:
+          registrar: MarkMonitor Inc.
+          risk_score: 1.2
+          asn_primary: AS15169
+          ip_type: datacenter
+          expiration_date: 2028-09-14
+          total_links_out: 89
+          network: 8.8.8.0/24
+          domain_name: google.com
+          registration_date: 1997-09-15
+          total_links_in: 1523
+          organization: Google LLC
+          dns_provider: Cloudflare
+          location: "Mountain View, California, US"
+          total_domains: 142
+          status: active
+        ip_intelligence:
+          key: null
+        metadata:
+          data_sources:
+          - geolocation_db
+          - whois_api
+          - dns_resolver
+          - threat_feeds
+          errors:
+          - threat_feed_timeout
+          - historical_whois_unavailable
+        query:
+          indicator: indicator
+          history_type: history_type
+          indicator_type: indicator_type
+          response_time_ms: 0
+          timestamp: timestamp
+        isp: "{}"
+        dns:
+          a_records:
+          - 8.8.8.8
+          - 8.8.4.4
+          mx_records:
+          - null
+          - null
+          aaaa_records:
+          - 2001:4860:4860::8888
+          txt_records:
+          - txt_records
+          - txt_records
+          cname_records:
+          - cname_records
+          - cname_records
+          arecords:
+          - arecords
+          - arecords
+          ns_records:
+          - ns1.google.com
+          - ns2.google.com
+        reputation:
+          domain_reputation:
+            scoring_method: composite_infrastructure
+            risk_level: medium_risk
+            mailserver_ip_score: 32.1
+            nameserver_ip_score: 45.2
+            domain_ip_score: 85.5
+            details:
+              domain_ip_scores:
+                key: 6.027456183070403
+              domain_ips:
+              - 8.8.8.8
+              nameserver_ips:
+              - 1.1.1.1
+              - 1.0.0.1
+              nameserver_domains:
+              - ns1.example.com
+              - ns2.example.com
+              nameserver_ip_scores:
+                key: 1.4658129805029452
+              mailserver_domains:
+              - mail.example.com
+              mailserver_ips:
+              - 74.125.28.27
+              mailserver_ip_scores:
+                key: 5.962133916683182
+            weights:
+              key: 5.637376656633329
+            overall_score: 51.3
+          risk_score: 2.3
+          blacklists:
+            prefix_score: 1.2
+            asn_score: 0.8
+            ip_score: 0.5
+        rpki: "{}"
+        network: "{}"
+        routing: "{}"
+        relationships:
+          related_domains:
+          - google.co.uk
+          - google.ca
+          - google.de
+          shared_infrastructure:
+          - youtube.com
+          - gmail.com
+          incoming_links:
+            total: 1523
+            top_destinations:
+            - accounts.google.com
+            - support.google.com
+            top_sources:
+            - example.com
+            - test.org
+          outgoing_links:
+            total: 1523
+            top_destinations:
+            - accounts.google.com
+            - support.google.com
+            top_sources:
+            - example.com
+            - test.org
+        security: "{}"
+        registration: "{}"
+        geolocation: "{}"
+      properties:
+        query:
+          $ref: "#/components/schemas/QueryInfo"
+        summary:
+          $ref: "#/components/schemas/SummaryInfo"
+        geolocation:
+          type: object
+        network:
+          type: object
+        routing:
+          type: object
+        isp:
+          type: object
+        registration:
+          type: object
+        dns:
+          $ref: "#/components/schemas/DnsInfo"
+        relationships:
+          $ref: "#/components/schemas/RelationshipInfo"
+        reputation:
+          $ref: "#/components/schemas/ReputationInfo"
+        security:
+          type: object
+        rpki:
+          type: object
+        ip_intelligence:
+          additionalProperties:
+            $ref: "#/components/schemas/JsonNode"
+          description: "When domain is queried with include=ip_intelligence, contains\
+            \ full intelligence for each resolved IP"
+          type: object
+        metadata:
+          $ref: "#/components/schemas/MetadataInfo"
+      type: object
+    LinksInfo:
+      description: Link statistics and top sources/destinations
+      example:
+        total: 1523
+        top_destinations:
+        - accounts.google.com
+        - support.google.com
+        top_sources:
+        - example.com
+        - test.org
+      properties:
+        total:
+          description: Total number of links
+          example: 1523
+          format: int32
+          type: integer
+        top_sources:
+          description: Top linking sources (for incoming links)
+          example:
+          - example.com
+          - test.org
+          items:
+            description: Top linking sources (for incoming links)
+            example: "[\"example.com\",\"test.org\"]"
+            type: string
+          type: array
+        top_destinations:
+          description: Top link destinations (for outgoing links)
+          example:
+          - accounts.google.com
+          - support.google.com
+          items:
+            description: Top link destinations (for outgoing links)
+            example: "[\"accounts.google.com\",\"support.google.com\"]"
+            type: string
+          type: array
+      type: object
+    MetadataInfo:
+      description: Response metadata including data sources and any errors encountered
+      example:
+        data_sources:
+        - geolocation_db
+        - whois_api
+        - dns_resolver
+        - threat_feeds
+        errors:
+        - threat_feed_timeout
+        - historical_whois_unavailable
+      properties:
+        data_sources:
+          description: List of data sources used to build this response
+          example:
+          - geolocation_db
+          - whois_api
+          - dns_resolver
+          - threat_feeds
+          items:
+            description: List of data sources used to build this response
+            example: "[\"geolocation_db\",\"whois_api\",\"dns_resolver\",\"threat_feeds\"\
+              ]"
+            type: string
+          type: array
+        errors:
+          description: Any non-fatal errors encountered during data collection. Empty
+            if all sources succeeded.
+          example:
+          - threat_feed_timeout
+          - historical_whois_unavailable
+          items:
+            description: Any non-fatal errors encountered during data collection.
+              Empty if all sources succeeded.
+            example: "[\"threat_feed_timeout\",\"historical_whois_unavailable\"]"
+            type: string
+          type: array
+      type: object
+    QueryInfo:
+      example:
+        indicator: indicator
+        history_type: history_type
+        indicator_type: indicator_type
+        response_time_ms: 0
+        timestamp: timestamp
+      properties:
+        indicator:
+          type: string
+        indicator_type:
+          type: string
+        history_type:
+          type: string
+        timestamp:
+          type: string
+        response_time_ms:
+          format: int64
+          type: integer
+      type: object
+    RelationshipInfo:
+      description: Connections and relationships to other infrastructure and domains
+      example:
+        related_domains:
+        - google.co.uk
+        - google.ca
+        - google.de
+        shared_infrastructure:
+        - youtube.com
+        - gmail.com
+        incoming_links:
+          total: 1523
+          top_destinations:
+          - accounts.google.com
+          - support.google.com
+          top_sources:
+          - example.com
+          - test.org
+        outgoing_links:
+          total: 1523
+          top_destinations:
+          - accounts.google.com
+          - support.google.com
+          top_sources:
+          - example.com
+          - test.org
+      properties:
+        incoming_links:
+          $ref: "#/components/schemas/LinksInfo"
+        outgoing_links:
+          $ref: "#/components/schemas/LinksInfo"
+        related_domains:
+          description: "Related domains (same owner, same network, similar content)"
+          example:
+          - google.co.uk
+          - google.ca
+          - google.de
+          items:
+            description: "Related domains (same owner, same network, similar content)"
+            example: "[\"google.co.uk\",\"google.ca\",\"google.de\"]"
+            type: string
+          type: array
+        shared_infrastructure:
+          description: "Other assets sharing the same infrastructure (IP, ASN, nameservers)"
+          example:
+          - youtube.com
+          - gmail.com
+          items:
+            description: "Other assets sharing the same infrastructure (IP, ASN, nameservers)"
+            example: "[\"youtube.com\",\"gmail.com\"]"
+            type: string
+          type: array
+      type: object
+    ReputationInfo:
+      description: Reputation scoring and blacklist information for threat assessment
+      example:
+        domain_reputation:
+          scoring_method: composite_infrastructure
+          risk_level: medium_risk
+          mailserver_ip_score: 32.1
+          nameserver_ip_score: 45.2
+          domain_ip_score: 85.5
+          details:
+            domain_ip_scores:
+              key: 6.027456183070403
+            domain_ips:
+            - 8.8.8.8
+            nameserver_ips:
+            - 1.1.1.1
+            - 1.0.0.1
+            nameserver_domains:
+            - ns1.example.com
+            - ns2.example.com
+            nameserver_ip_scores:
+              key: 1.4658129805029452
+            mailserver_domains:
+            - mail.example.com
+            mailserver_ips:
+            - 74.125.28.27
+            mailserver_ip_scores:
+              key: 5.962133916683182
+          weights:
+            key: 5.637376656633329
+          overall_score: 51.3
+        risk_score: 2.3
+        blacklists:
+          prefix_score: 1.2
+          asn_score: 0.8
+          ip_score: 0.5
+      properties:
+        risk_score:
+          description: "Composite risk score (0-10, higher = riskier)"
+          example: 2.3
+          format: double
+          maximum: 10
+          minimum: 0
+          type: number
+        blacklists:
+          $ref: "#/components/schemas/BlacklistScores"
+        domain_reputation:
+          $ref: "#/components/schemas/DomainReputationScores"
+      type: object
+    SummaryInfo:
+      description: Executive summary with the most important facts for quick decision-making
+      example:
+        registrar: MarkMonitor Inc.
+        risk_score: 1.2
+        asn_primary: AS15169
+        ip_type: datacenter
+        expiration_date: 2028-09-14
+        total_links_out: 89
+        network: 8.8.8.0/24
+        domain_name: google.com
+        registration_date: 1997-09-15
+        total_links_in: 1523
+        organization: Google LLC
+        dns_provider: Cloudflare
+        location: "Mountain View, California, US"
+        total_domains: 142
+        status: active
+      properties:
+        organization:
+          description: Primary organization name
+          example: Google LLC
+          type: string
+        location:
+          description: Primary location
+          example: "Mountain View, California, US"
+          type: string
+        network:
+          description: Network range or CIDR
+          example: 8.8.8.0/24
+          type: string
+        registrar:
+          description: Domain registrar
+          example: MarkMonitor Inc.
+          type: string
+        status:
+          description: Domain status
+          enum:
+          - active
+          - expired
+          - pending
+          - suspended
+          - deleted
+          example: active
+          type: string
+        asn_primary:
+          description: Primary ASN
+          example: AS15169
+          type: string
+        risk_score:
+          description: "Composite risk score (0-10, higher is riskier)"
+          example: 1.2
+          format: double
+          maximum: 10
+          minimum: 0
+          type: number
+        ip_type:
+          description: IP classification
+          enum:
+          - residential
+          - business
+          - datacenter
+          - hosting
+          - vpn
+          - proxy
+          - tor
+          - mobile
+          example: datacenter
+          type: string
+        total_domains:
+          description: Total number of domains resolving to this IP
+          example: 142
+          format: int32
+          type: integer
+        domain_name:
+          description: The domain name
+          example: google.com
+          type: string
+        registration_date:
+          description: Domain registration date
+          example: 1997-09-15
+          type: string
+        expiration_date:
+          description: Domain expiration date
+          example: 2028-09-14
+          type: string
+        dns_provider:
+          description: Primary DNS provider
+          example: Cloudflare
+          type: string
+        total_links_in:
+          description: Number of incoming links/backlinks
+          example: 1523
+          format: int32
+          type: integer
+        total_links_out:
+          description: Number of outgoing links
+          example: 89
+          format: int32
+          type: integer
+      type: object
+    HistoryData:
+      example:
+        oldest_date: oldest_date
+        records:
+        - null
+        - null
+        total_records: 0
+        newest_date: newest_date
+        message: message
+      properties:
+        records:
+          items:
+            $ref: "#/components/schemas/JsonNode"
+          type: array
+        total_records:
+          format: int32
+          type: integer
+        oldest_date:
+          type: string
+        newest_date:
+          type: string
+        message:
+          type: string
+      type: object
+    HistoryResponse:
+      example:
+        query:
+          indicator: indicator
+          history_type: history_type
+          indicator_type: indicator_type
+          response_time_ms: 0
+          timestamp: timestamp
+        history:
+          oldest_date: oldest_date
+          records:
+          - null
+          - null
+          total_records: 0
+          newest_date: newest_date
+          message: message
+      properties:
+        query:
+          $ref: "#/components/schemas/QueryInfo"
+        history:
+          $ref: "#/components/schemas/HistoryData"
+      type: object
+    SubdomainInfo:
+      description: Detailed information about a discovered subdomain
+      example:
+        technologies:
+        - nginx
+        - WordPress
+        - CloudFlare
+        first_seen: 2024-01-15T08:00:00Z
+        last_seen: 2024-12-20T10:00:00Z
+        risk_score: 15
+        ip_addresses:
+        - 192.0.2.1
+        - 198.51.100.1
+        subdomain: www.example.com
+        record_type: A
+        status: active
+      properties:
+        subdomain:
+          description: The full subdomain name
+          example: www.example.com
+          type: string
+        ip_addresses:
+          description: IP addresses associated with the subdomain
+          example:
+          - 192.0.2.1
+          - 198.51.100.1
+          items:
+            description: IP addresses associated with the subdomain
+            example: "[\"192.0.2.1\",\"198.51.100.1\"]"
+            type: string
+          type: array
+        first_seen:
+          description: First time this subdomain was observed
+          example: 2024-01-15T08:00:00Z
+          format: date-time
+          type: string
+        last_seen:
+          description: Last time this subdomain was observed
+          example: 2024-12-20T10:00:00Z
+          format: date-time
+          type: string
+        record_type:
+          description: Type of subdomain record
+          enum:
+          - A
+          - AAAA
+          - CNAME
+          - MX
+          - TXT
+          - NS
+          example: A
+          type: string
+        status:
+          description: Current status of the subdomain
+          enum:
+          - active
+          - inactive
+          - parked
+          example: active
+          type: string
+        technologies:
+          description: Technology stack detected on this subdomain
+          example:
+          - nginx
+          - WordPress
+          - CloudFlare
+          items:
+            description: Technology stack detected on this subdomain
+            example: "[\"nginx\",\"WordPress\",\"CloudFlare\"]"
+            type: string
+          type: array
+        risk_score:
+          description: Risk score for this subdomain (0-100)
+          example: 15
+          format: int32
+          maximum: 100
+          minimum: 0
+          type: integer
+      required:
+      - subdomain
+      type: object
+    SubdomainResponse:
+      description: Response containing discovered subdomains and related metadata
+      example:
+        subdomains:
+        - technologies:
+          - nginx
+          - WordPress
+          - CloudFlare
+          first_seen: 2024-01-15T08:00:00Z
+          last_seen: 2024-12-20T10:00:00Z
+          risk_score: 15
+          ip_addresses:
+          - 192.0.2.1
+          - 198.51.100.1
+          subdomain: www.example.com
+          record_type: A
+          status: active
+        - technologies:
+          - nginx
+          - WordPress
+          - CloudFlare
+          first_seen: 2024-01-15T08:00:00Z
+          last_seen: 2024-12-20T10:00:00Z
+          risk_score: 15
+          ip_addresses:
+          - 192.0.2.1
+          - 198.51.100.1
+          subdomain: www.example.com
+          record_type: A
+          status: active
+        sources:
+        - passive_dns
+        - certificate_transparency
+        - web_crawling
+        total_count: 42
+        domain: example.com
+        timestamp: 2024-12-20T10:15:30.123Z
+      properties:
+        domain:
+          description: The root domain that was queried
+          example: example.com
+          type: string
+        total_count:
+          description: Total number of subdomains discovered
+          example: 42
+          format: int32
+          type: integer
+        subdomains:
+          description: List of discovered subdomains
+          items:
+            $ref: "#/components/schemas/SubdomainInfo"
+          type: array
+        timestamp:
+          description: Timestamp of when the data was retrieved
+          example: 2024-12-20T10:15:30.123Z
+          format: date-time
+          type: string
+        sources:
+          description: Data sources used for subdomain discovery
+          example:
+          - passive_dns
+          - certificate_transparency
+          - web_crawling
+          items:
+            description: Data sources used for subdomain discovery
+            example: "[\"passive_dns\",\"certificate_transparency\",\"web_crawling\"\
+              ]"
+            type: string
+          type: array
+      required:
+      - domain
+      - subdomains
+      - timestamp
+      - total_count
+      type: object
+  securitySchemes:
+    bearerAuth:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http
+
